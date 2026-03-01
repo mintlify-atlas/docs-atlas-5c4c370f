@@ -1,0 +1,252 @@
+---
+title: Storage Components
+description: API reference for file storage components including dropzone and file upload
+---
+
+## Dropzone
+
+A file upload component with drag-and-drop support, file validation, and upload progress tracking.
+
+### Props
+
+<ParamField path="upload" type="UseConvexUploadReturn" required>
+  The return value from the `useConvexUpload` hook
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the component
+</ParamField>
+
+### Hook: useConvexUpload
+
+The component requires the `useConvexUpload` hook for managing file upload state.
+
+#### Hook Options
+
+<ParamField path="allowedMimeTypes" type="string[]" default="[]">
+  Allowed MIME types for file uploads. Supports wildcards (e.g., `"image/*"`, `"text/html"`). Empty array allows all types.
+</ParamField>
+
+<ParamField path="maxFileSize" type="number" default="Number.POSITIVE_INFINITY">
+  Maximum upload size per file in bytes (e.g., 1000 bytes = 1 KB)
+</ParamField>
+
+<ParamField path="maxFiles" type="number" default="1">
+  Maximum number of files allowed per upload
+</ParamField>
+
+#### Hook Return Values
+
+<ResponseField name="files" type="FileWithPreview[]">
+  Array of files selected for upload
+  
+  <Expandable title="FileWithPreview properties">
+    <ResponseField name="name" type="string">
+      File name
+    </ResponseField>
+    
+    <ResponseField name="size" type="number">
+      File size in bytes
+    </ResponseField>
+    
+    <ResponseField name="type" type="string">
+      MIME type of the file
+    </ResponseField>
+    
+    <ResponseField name="preview" type="string">
+      Object URL for file preview (images)
+    </ResponseField>
+    
+    <ResponseField name="errors" type="FileError[]">
+      Validation errors for the file
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="setFiles" type="(files: FileWithPreview[]) => void">
+  Function to update the files array
+</ResponseField>
+
+<ResponseField name="loading" type="boolean">
+  Upload in progress state
+</ResponseField>
+
+<ResponseField name="errors" type="{ name: string; message: string }[]">
+  Array of upload errors
+</ResponseField>
+
+<ResponseField name="successes" type="string[]">
+  Array of successfully uploaded file names
+</ResponseField>
+
+<ResponseField name="isSuccess" type="boolean">
+  True if all files uploaded successfully with no errors
+</ResponseField>
+
+<ResponseField name="onUpload" type="() => Promise<void>">
+  Function to trigger file upload
+</ResponseField>
+
+<ResponseField name="maxFileSize" type="number">
+  Maximum file size setting
+</ResponseField>
+
+<ResponseField name="maxFiles" type="number">
+  Maximum files setting
+</ResponseField>
+
+<ResponseField name="allowedMimeTypes" type="string[]">
+  Allowed MIME types setting
+</ResponseField>
+
+<ResponseField name="getRootProps" type="() => object">
+  Props for the dropzone root element (from react-dropzone)
+</ResponseField>
+
+<ResponseField name="getInputProps" type="() => object">
+  Props for the file input element (from react-dropzone)
+</ResponseField>
+
+<ResponseField name="isDragActive" type="boolean">
+  True when files are being dragged over the dropzone
+</ResponseField>
+
+<ResponseField name="open" type="() => void">
+  Function to programmatically open file picker
+</ResponseField>
+
+### Types
+
+```typescript
+interface FileWithPreview extends File {
+  preview?: string;
+  errors: readonly FileError[];
+}
+
+type UseConvexUploadOptions = {
+  allowedMimeTypes?: string[];
+  maxFileSize?: number;
+  maxFiles?: number;
+};
+
+type UseConvexUploadReturn = ReturnType<typeof useConvexUpload>;
+
+interface DropzoneProps {
+  upload: UseConvexUploadReturn;
+  className?: string;
+}
+```
+
+### Example
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export default function UploadPage() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: ["image/*", "application/pdf"],
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 3,
+  });
+
+  return (
+    <div>
+      <h1>Upload Files</h1>
+      <Dropzone upload={upload} className="my-4" />
+    </div>
+  );
+}
+```
+
+### Direct Hook Usage
+
+```tsx
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export default function CustomUpload() {
+  const {
+    files,
+    loading,
+    errors,
+    successes,
+    isSuccess,
+    onUpload,
+    getRootProps,
+    getInputProps,
+    isDragActive,
+  } = useConvexUpload({
+    allowedMimeTypes: ["image/*"],
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFiles: 5,
+  });
+
+  return (
+    <div {...getRootProps()}>
+      <input {...getInputProps()} />
+      {isDragActive ? (
+        <p>Drop files here...</p>
+      ) : (
+        <p>Drag files here or click to browse</p>
+      )}
+      
+      {files.length > 0 && (
+        <div>
+          <h3>Selected Files:</h3>
+          <ul>
+            {files.map((file) => (
+              <li key={file.name}>
+                {file.name} - {file.size} bytes
+                {successes.includes(file.name) && " ✓"}
+              </li>
+            ))}
+          </ul>
+          <button onClick={onUpload} disabled={loading || isSuccess}>
+            {loading ? "Uploading..." : "Upload"}
+          </button>
+        </div>
+      )}
+      
+      {errors.length > 0 && (
+        <div>
+          <h3>Errors:</h3>
+          <ul>
+            {errors.map((error) => (
+              <li key={error.name}>
+                {error.name}: {error.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### Upload Flow
+
+1. Files are selected via drag-and-drop or file picker
+2. Files are validated against `allowedMimeTypes`, `maxFileSize`, and `maxFiles`
+3. Valid files are added to the `files` array with preview URLs (for images)
+4. Invalid files are added with their validation errors
+5. User clicks upload button (or calls `onUpload()`)
+6. For each file:
+   - Generate upload URL via `generateUploadUrl` mutation
+   - Upload file to Convex storage via fetch POST
+   - Save file metadata to database via `saveFile` mutation
+7. Track successes and errors per file
+8. Support partial uploads - can retry failed files
+
+### Features
+
+- Drag-and-drop support
+- File type validation with MIME types
+- File size validation
+- Maximum file count enforcement
+- Image preview generation
+- Upload progress tracking
+- Per-file error handling
+- Partial upload support (retry failed files)
+- Visual feedback for drag state, loading, success, and errors
+- File type icons for different MIME types

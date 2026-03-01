@@ -1,0 +1,580 @@
+---
+title: "Realtime Cursors"
+description: "Display realtime cursor positions of multiple users for collaborative applications"
+---
+
+## Overview
+
+The Realtime Cursors component tracks and displays cursor positions of multiple users in realtime. Perfect for:
+
+- Collaborative design tools
+- Multiplayer games
+- Live presentations
+- Interactive whiteboards
+
+**Features:**
+
+- Smooth cursor animations
+- User name labels
+- Custom colors per user
+- Presence tracking
+- Demo mode support
+
+## Installation
+
+```bash
+npx @convex-dev/shadcn add convex/realtime-cursor-nextjs
+```
+
+This installs:
+
+- `RealtimeCursors` wrapper component
+- `Cursor` display component with animations
+- Custom hooks for cursor tracking
+- Complete Convex backend with presence
+
+## Usage
+
+### Basic Example
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+
+export default function CollaborativeCanvas() {
+  return (
+    <RealtimeCursors
+      roomName="canvas-1"
+      username="Alice"
+      className="h-screen bg-gray-50"
+    >
+      <div className="p-8">
+        <h1>Collaborative Workspace</h1>
+        <p>Move your mouse to see cursors!</p>
+      </div>
+    </RealtimeCursors>
+  );
+}
+```
+
+### With Custom Colors
+
+```tsx
+<RealtimeCursors
+  roomName="design-board"
+  username="Bob"
+  userColor="#3b82f6"
+>
+  {/* Your content */}
+</RealtimeCursors>
+```
+
+### In a Design Tool
+
+```tsx
+"use client";
+
+import { RealtimeCursors } from "@/components/realtime-cursors";
+import { useState } from "react";
+
+export default function DesignTool() {
+  const [elements, setElements] = useState([]);
+  
+  return (
+    <div className="h-screen flex">
+      <aside className="w-64 border-r p-4">
+        <h2>Tools</h2>
+        {/* Tool palette */}
+      </aside>
+      
+      <main className="flex-1">
+        <RealtimeCursors
+          roomName="project-123"
+          username="Designer"
+          className="w-full h-full"
+        >
+          <canvas className="w-full h-full" />
+        </RealtimeCursors>
+      </main>
+    </div>
+  );
+}
+```
+
+## Component API
+
+### RealtimeCursors Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the cursor room. Users in the same room see each other's cursors.
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name shown with the cursor
+</ParamField>
+
+<ParamField path="userColor" type="string">
+  Hex color for the user's cursor. Randomly generated if not provided.
+  
+  Example: `"#3b82f6"`, `"#ef4444"`
+</ParamField>
+
+<ParamField path="children" type="ReactNode">
+  Content to render inside the cursor tracking area
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the container
+</ParamField>
+
+## Component Structure
+
+```tsx title="components/realtime-cursors.tsx"
+"use client";
+
+import { useEffect, useRef } from "react";
+import { AnimatePresence } from "framer-motion";
+import { Cursor } from "./cursor";
+import { useRealtimeCursors } from "../hooks/use-realtime-cursors";
+
+interface RealtimeCursorsProps {
+  roomName: string;
+  username: string;
+  userColor?: string;
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export function RealtimeCursors({
+  roomName,
+  username,
+  userColor,
+  children,
+  className,
+}: RealtimeCursorsProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { cursors, createMouseMoveHandler, setContainer, isConnected } =
+    useRealtimeCursors({
+      roomName,
+      username,
+      userColor,
+    });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    setContainer(container);
+    const handleMove = createMouseMoveHandler(container);
+
+    container.addEventListener("mousemove", handleMove);
+    return () => {
+      container.removeEventListener("mousemove", handleMove);
+      setContainer(null);
+    };
+  }, [createMouseMoveHandler, setContainer]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative overflow-hidden ${className ?? ""}`}
+    >
+      {children}
+      <AnimatePresence>
+        {cursors.map((cursor) => (
+          <Cursor
+            key={cursor.id}
+            name={cursor.name}
+            color={cursor.color}
+            position={cursor.position}
+          />
+        ))}
+      </AnimatePresence>
+      {!isConnected && (
+        <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+          Connecting...
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### Cursor Component
+
+The animated cursor display:
+
+```tsx title="components/cursor.tsx"
+import { motion } from "framer-motion";
+
+interface CursorProps {
+  name: string;
+  color: string;
+  position: { x: number; y: number };
+}
+
+export function Cursor({ name, color, position }: CursorProps) {
+  return (
+    <motion.div
+      className="absolute pointer-events-none z-50"
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        x: position.x,
+        y: position.y,
+      }}
+      exit={{ opacity: 0, scale: 0 }}
+      transition={{
+        type: "spring",
+        damping: 30,
+        stiffness: 200,
+      }}
+    >
+      {/* Cursor SVG */}
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        style={{ color }}
+      >
+        <path
+          d="M5.65376 12.3673L13.9716 5.75378L11.8808 14.7265L16.4673 15.9964L8.14948 22.6099L10.2403 13.6372L5.65376 12.3673Z"
+          fill="currentColor"
+          stroke="white"
+          strokeWidth="1.5"
+        />
+      </svg>
+      
+      {/* Name label */}
+      <div
+        className="ml-4 mt-1 px-2 py-1 rounded text-xs font-medium text-white whitespace-nowrap"
+        style={{ backgroundColor: color }}
+      >
+        {name}
+      </div>
+    </motion.div>
+  );
+}
+```
+
+## Custom Hook
+
+### useRealtimeCursors
+
+Manages cursor state and position updates:
+
+```tsx title="hooks/use-realtime-cursors.ts"
+"use client";
+
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useCallback, useState, useEffect } from "react";
+
+interface UseRealtimeCursorsProps {
+  roomName: string;
+  username: string;
+  userColor?: string;
+}
+
+export function useRealtimeCursors({
+  roomName,
+  username,
+  userColor,
+}: UseRealtimeCursorsProps) {
+  const [sessionId, setSessionId] = useState("");
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+  
+  const presences = useQuery(api.presence.list, { roomId: roomName });
+  const updatePresence = useMutation(api.presence.update);
+
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId());
+  }, []);
+
+  const createMouseMoveHandler = useCallback(
+    (container: HTMLElement) => {
+      return (e: MouseEvent) => {
+        const rect = container.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+        updatePresence({
+          roomId: roomName,
+          userName: username,
+          cursorX: x,
+          cursorY: y,
+          color: userColor,
+          sessionId,
+        });
+      };
+    },
+    [roomName, username, userColor, sessionId, updatePresence],
+  );
+
+  const cursors = (presences ?? [])
+    .filter((p) => p.sessionId !== sessionId)
+    .map((p) => ({
+      id: p._id,
+      name: p.userName,
+      color: p.color,
+      position: {
+        x: container ? (p.cursorX / 100) * container.clientWidth : 0,
+        y: container ? (p.cursorY / 100) * container.clientHeight : 0,
+      },
+    }));
+
+  return {
+    cursors,
+    createMouseMoveHandler,
+    setContainer,
+    isConnected: presences !== undefined,
+  };
+}
+```
+
+## Backend Implementation
+
+### Presence Schema
+
+```typescript title="convex/schema.ts"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  presence: defineTable({
+    roomId: v.string(),
+    userId: v.optional(v.id("users")),
+    sessionId: v.string(),
+    userName: v.string(),
+    cursorX: v.number(),
+    cursorY: v.number(),
+    color: v.string(),
+    lastActive: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_session", ["sessionId"]),
+});
+```
+
+### Presence Functions
+
+```typescript title="convex/presence.ts"
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+const PRESENCE_TIMEOUT = 30000; // 30 seconds
+
+// List active users in a room
+export const list = query({
+  args: { roomId: v.string() },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const cutoff = now - PRESENCE_TIMEOUT;
+
+    return await ctx.db
+      .query("presence")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .filter((q) => q.gt(q.field("lastActive"), cutoff))
+      .collect();
+  },
+});
+
+// Update user presence
+export const update = mutation({
+  args: {
+    roomId: v.string(),
+    userName: v.string(),
+    cursorX: v.number(),
+    cursorY: v.number(),
+    color: v.optional(v.string()),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("presence")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .first();
+
+    const color = args.color ?? generateRandomColor();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        roomId: args.roomId,
+        userName: args.userName,
+        cursorX: args.cursorX,
+        cursorY: args.cursorY,
+        color,
+        lastActive: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("presence", {
+        roomId: args.roomId,
+        sessionId: args.sessionId,
+        userName: args.userName,
+        cursorX: args.cursorX,
+        cursorY: args.cursorY,
+        color,
+        lastActive: Date.now(),
+      });
+    }
+  },
+});
+```
+
+## Features
+
+### Smooth Animations
+
+Cursors use Framer Motion for smooth, spring-based animations:
+
+```tsx
+<motion.div
+  animate={{
+    x: position.x,
+    y: position.y,
+  }}
+  transition={{
+    type: "spring",
+    damping: 30,
+    stiffness: 200,
+  }}
+/>
+```
+
+### Automatic Cleanup
+
+Inactive cursors are automatically removed after 30 seconds of inactivity.
+
+### Percentage-Based Positioning
+
+Cursor positions are stored as percentages (0-100) for responsive layouts. The hook converts these to pixel positions based on container size.
+
+### Color Generation
+
+If no color is provided, a random color is generated:
+
+```typescript
+function generateRandomColor(): string {
+  const colors = [
+    "#3b82f6", // blue
+    "#ef4444", // red
+    "#10b981", // green
+    "#f59e0b", // yellow
+    "#8b5cf6", // purple
+    "#ec4899", // pink
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+```
+
+## Common Patterns
+
+### With Authentication
+
+```tsx
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { RealtimeCursors } from "@/components/realtime-cursors";
+
+export default function CollaborativeApp() {
+  const user = useQuery(api.users.current);
+  
+  if (!user) return <div>Please log in</div>;
+  
+  return (
+    <RealtimeCursors
+      roomName="doc-123"
+      username={user.name ?? "Anonymous"}
+      userColor={user.color}
+    >
+      {/* Your app */}
+    </RealtimeCursors>
+  );
+}
+```
+
+### Full-Screen Collaboration
+
+```tsx
+<RealtimeCursors
+  roomName="whiteboard"
+  username="Artist"
+  className="fixed inset-0"
+>
+  <div className="w-full h-full">
+    {/* Collaborative canvas */}
+  </div>
+</RealtimeCursors>
+```
+
+### With Avatar Stack
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+export default function Workspace() {
+  return (
+    <div className="h-screen flex flex-col">
+      <header className="border-b p-4">
+        <RealtimeAvatarStack
+          roomName="workspace-1"
+          user={{ name: "Alice" }}
+        />
+      </header>
+      
+      <main className="flex-1">
+        <RealtimeCursors
+          roomName="workspace-1"
+          username="Alice"
+          className="h-full"
+        >
+          {/* Content */}
+        </RealtimeCursors>
+      </main>
+    </div>
+  );
+}
+```
+
+## Styling
+
+The component uses absolute positioning and pointer-events-none for cursors:
+
+```css
+.cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+}
+```
+
+Customize the container:
+
+```tsx
+<RealtimeCursors
+  roomName="room"
+  username="User"
+  className="relative min-h-screen bg-gray-50"
+>
+  {/* Content */}
+</RealtimeCursors>
+```
+
+## Performance
+
+The component is optimized for performance:
+
+- Throttled cursor updates (via Convex)
+- Efficient presence queries with indexes
+- Automatic cleanup of stale data
+- Smooth animations with GPU acceleration
+
+## Related
+
+- [Realtime Avatar Stack](/nextjs/realtime-avatar-stack)
+- [Realtime Chat](/nextjs/realtime-chat)
+- [Client Setup](/nextjs/client)

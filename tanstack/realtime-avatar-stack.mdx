@@ -1,0 +1,675 @@
+---
+title: Realtime Avatar Stack
+description: Display a stack of user avatars showing who's currently present in a room
+---
+
+## Overview
+
+Show a visual stack of avatars for all users currently present in a room. Updates in real-time as users join and leave. Perfect for showing collaboration status, live viewers, or active participants.
+
+## Features
+
+- Real-time presence tracking
+- Avatar stack display
+- User count indicator
+- Tooltip with user names
+- Connection status
+- Automatic join/leave
+- Heartbeat mechanism
+- Customizable size and max visible
+- TypeScript support
+
+## Installation
+
+<Steps>
+  <Step title="Install the component">
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/realtime-avatar-stack-tanstack
+    ```
+  </Step>
+
+  <Step title="Start Convex">
+    ```bash
+    npx convex dev
+    ```
+  </Step>
+</Steps>
+
+## What Gets Installed
+
+### Components
+
+- `realtime-avatar-stack.tsx` - Main presence-aware component
+- `avatar-stack.tsx` - Visual avatar stack display
+
+### Hooks
+
+- `use-realtime-presence-room.ts` - Presence room management
+
+### Backend (Convex)
+
+- `convex/presence.ts` - Presence tracking functions
+- `convex/schema.ts` - Presence database schema
+
+## Usage
+
+### Basic Avatar Stack
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+export function CollaborationHeader() {
+  return (
+    <header className="flex items-center justify-between p-4">
+      <h1>Collaborative Workspace</h1>
+      <RealtimeAvatarStack
+        roomName="workspace-123"
+        user={{
+          name: "Alice",
+          image: "https://example.com/alice.jpg",
+        }}
+      />
+    </header>
+  );
+}
+```
+
+### With Authentication
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function AuthenticatedPresence() {
+  const { data: user } = useQuery(convexQuery(api.users.current, {}));
+
+  if (!user) return null;
+
+  return (
+    <RealtimeAvatarStack
+      roomName="team-workspace"
+      user={{
+        name: user.name ?? "Anonymous",
+        image: user.image,
+      }}
+    />
+  );
+}
+```
+
+### Custom Size
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+// Small avatars
+<RealtimeAvatarStack
+  roomName="room"
+  user={{ name: "Alice" }}
+  size="sm"
+/>
+
+// Medium avatars (default)
+<RealtimeAvatarStack
+  roomName="room"
+  user={{ name: "Alice" }}
+  size="md"
+/>
+
+// Large avatars
+<RealtimeAvatarStack
+  roomName="room"
+  user={{ name: "Alice" }}
+  size="lg"
+/>
+```
+
+### Limit Visible Avatars
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+<RealtimeAvatarStack
+  roomName="room"
+  user={{ name: "Alice" }}
+  maxVisible={3} // Show max 3 avatars, rest as "+N"
+/>
+```
+
+### With Custom Colors
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+const userColors = ["#3b82f6", "#ef4444", "#10b981"];
+const userColor = userColors[Math.floor(Math.random() * userColors.length)];
+
+<RealtimeAvatarStack
+  roomName="room"
+  user={{
+    name: "Alice",
+    color: userColor, // Used for fallback background
+  }}
+/>
+```
+
+### Multiple Rooms
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+export function MultiRoomPresence() {
+  const user = { name: "Alice" };
+
+  return (
+    <Tabs defaultValue="design">
+      <TabsList>
+        <TabsTrigger value="design">
+          Design
+          <RealtimeAvatarStack
+            roomName="design"
+            user={user}
+            size="sm"
+            className="ml-2"
+          />
+        </TabsTrigger>
+        <TabsTrigger value="dev">
+          Development
+          <RealtimeAvatarStack
+            roomName="dev"
+            user={user}
+            size="sm"
+            className="ml-2"
+          />
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+}
+```
+
+## API Reference
+
+### RealtimeAvatarStack Props
+
+```typescript
+interface RealtimeAvatarStackProps {
+  roomName: string;
+  user: {
+    name: string;
+    image?: string;
+    color?: string;
+  };
+  maxVisible?: number;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}
+```
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the presence room. Users in the same room see each other.
+</ParamField>
+
+<ParamField path="user" type="object" required>
+  Current user information:
+  - `name` (required): Display name
+  - `image` (optional): Profile picture URL
+  - `color` (optional): Fallback background color
+</ParamField>
+
+<ParamField path="maxVisible" type="number" default={5}>
+  Maximum number of avatars to show. Remaining users shown as "+N".
+</ParamField>
+
+<ParamField path="size" type="string" default="md">
+  Avatar size: `"sm"` (32px), `"md"` (40px), or `"lg"` (48px)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the container.
+</ParamField>
+
+### AvatarStack Props
+
+For using the visual component independently:
+
+```typescript
+interface AvatarStackProps {
+  users: Array<{
+    id: string;
+    name: string;
+    image?: string;
+    color?: string;
+  }>;
+  maxVisible?: number;
+  size?: "sm" | "md" | "lg";
+}
+```
+
+**Example:**
+
+```tsx
+import { AvatarStack } from "@/components/avatar-stack";
+
+const users = [
+  { id: "1", name: "Alice", image: "https://..." },
+  { id: "2", name: "Bob" },
+  { id: "3", name: "Charlie", color: "#ef4444" },
+];
+
+<AvatarStack users={users} maxVisible={3} size="md" />
+```
+
+### useRealtimePresenceRoom Hook
+
+```typescript
+interface UseRealtimePresenceRoomProps {
+  roomName: string;
+  user: {
+    name: string;
+    image?: string;
+    color?: string;
+  };
+  heartbeatMs?: number;
+}
+
+interface UseRealtimePresenceRoomReturn {
+  users: PresenceUser[];
+  isConnected: boolean;
+  userCount: number;
+}
+
+interface PresenceUser {
+  id: string;
+  name: string;
+  image?: string;
+  color?: string;
+}
+```
+
+<ParamField path="heartbeatMs" type="number" default={10000}>
+  Milliseconds between heartbeat updates (default: 10 seconds)
+</ParamField>
+
+**Example:**
+
+```tsx
+import { useRealtimePresenceRoom } from "@/hooks/use-realtime-presence-room";
+
+function CustomPresence() {
+  const { users, isConnected, userCount } = useRealtimePresenceRoom({
+    roomName: "room",
+    user: { name: "Alice" },
+    heartbeatMs: 5000, // More frequent updates
+  });
+
+  return (
+    <div>
+      <div>Connected: {isConnected ? "Yes" : "No"}</div>
+      <div>{userCount} users online</div>
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## Backend Implementation
+
+### Presence Schema
+
+```typescript convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  presence: defineTable({
+    roomId: v.string(),
+    sessionId: v.string(),
+    data: v.any(), // User info: name, image, color
+    lastSeen: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_session", ["sessionId"]),
+});
+```
+
+### Update Presence
+
+```typescript convex/presence.ts
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+export const update = mutation({
+  args: {
+    roomId: v.string(),
+    sessionId: v.string(),
+    data: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("presence")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .first();
+
+    const now = Date.now();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        roomId: args.roomId,
+        data: args.data,
+        lastSeen: now,
+      });
+    } else {
+      await ctx.db.insert("presence", {
+        roomId: args.roomId,
+        sessionId: args.sessionId,
+        data: args.data,
+        lastSeen: now,
+      });
+    }
+  },
+});
+```
+
+### List Present Users
+
+```typescript convex/presence.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+const PRESENCE_TIMEOUT = 30000; // 30 seconds
+
+export const list = query({
+  args: { roomId: v.string() },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    
+    return await ctx.db
+      .query("presence")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .filter((q) => q.gt(q.field("lastSeen"), now - PRESENCE_TIMEOUT))
+      .collect();
+  },
+});
+```
+
+## Features in Detail
+
+### Automatic Join/Leave
+
+Users automatically join on mount and leave on unmount:
+
+```typescript
+useEffect(() => {
+  if (!sessionId) return;
+
+  // Join room
+  join();
+
+  // Send heartbeats
+  const interval = setInterval(() => {
+    join();
+  }, heartbeatMs);
+
+  // Leave on unmount
+  return () => {
+    clearInterval(interval);
+    leave();
+  };
+}, [sessionId]);
+```
+
+### Heartbeat Mechanism
+
+Periodic updates keep presence alive:
+
+```typescript
+const join = useCallback(() => {
+  updatePresence({
+    roomId,
+    data: {
+      name: user.name,
+      userImage: user.image,
+      color: user.color,
+    },
+    sessionId,
+  });
+}, [updatePresence, roomId, user, sessionId]);
+```
+
+### Stale Presence Cleanup
+
+Inactive users are automatically removed after 30 seconds:
+
+```typescript
+const PRESENCE_TIMEOUT = 30000;
+
+query.filter((q) => 
+  q.gt(q.field("lastSeen"), Date.now() - PRESENCE_TIMEOUT)
+)
+```
+
+### Overflow Handling
+
+When more users than `maxVisible`, show "+N" badge:
+
+```tsx
+{remaining > 0 && (
+  <Avatar className={cn(sizeClasses[size], "-ml-3")}>
+    <AvatarFallback>+{remaining}</AvatarFallback>
+  </Avatar>
+)}
+```
+
+## Customization
+
+### Custom Avatar Display
+
+```tsx avatar-stack.tsx
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export function AvatarStack({ users, maxVisible, size }: AvatarStackProps) {
+  const visible = users.slice(0, maxVisible);
+  const remaining = Math.max(0, users.length - maxVisible);
+
+  return (
+    <div className="flex -space-x-2">
+      {visible.map((user, index) => (
+        <Avatar
+          key={user.id}
+          className={cn(
+            sizeClasses[size],
+            "border-2 border-background",
+            "hover:z-10 hover:scale-110 transition-transform"
+          )}
+          style={{ zIndex: visible.length - index }}
+        >
+          <AvatarImage src={user.image} alt={user.name} />
+          <AvatarFallback style={{ backgroundColor: user.color }}>
+            {getInitials(user.name)}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+      {remaining > 0 && (
+        <Avatar className={cn(sizeClasses[size], "border-2 border-background")}>
+          <AvatarFallback>+{remaining}</AvatarFallback>
+        </Avatar>
+      )}
+    </div>
+  );
+}
+```
+
+### Adjust Heartbeat Frequency
+
+```tsx
+// More frequent updates (better real-time, more bandwidth)
+<RealtimeAvatarStack
+  roomName="room"
+  user={{ name: "Alice" }}
+  heartbeatMs={5000} // Every 5 seconds
+/>
+
+// Less frequent updates (less bandwidth, slower updates)
+<RealtimeAvatarStack
+  roomName="room"
+  user={{ name: "Alice" }}
+  heartbeatMs={30000} // Every 30 seconds
+/>
+```
+
+### Add Tooltips
+
+```tsx
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+{visible.map((user) => (
+  <Tooltip key={user.id}>
+    <TooltipTrigger>
+      <Avatar className={sizeClasses[size]}>
+        <AvatarImage src={user.image} />
+        <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+      </Avatar>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p>{user.name}</p>
+    </TooltipContent>
+  </Tooltip>
+))}
+```
+
+## Examples
+
+### Document Viewers
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+export function DocumentHeader({ documentId }: { documentId: string }) {
+  return (
+    <header className="flex items-center justify-between p-4 border-b">
+      <div>
+        <h1 className="text-2xl font-bold">Collaborative Document</h1>
+        <p className="text-sm text-muted-foreground">Last edited 5 minutes ago</p>
+      </div>
+      <RealtimeAvatarStack
+        roomName={`document-${documentId}`}
+        user={{ name: "Alice", image: "https://..." }}
+        size="md"
+        maxVisible={5}
+      />
+    </header>
+  );
+}
+```
+
+### Live Stream Viewers
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+import { Eye } from "lucide-react";
+
+export function LiveStreamHeader({ streamId }: { streamId: string }) {
+  return (
+    <div className="flex items-center gap-4 p-4 bg-red-600 text-white">
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
+        <span className="font-semibold">LIVE</span>
+      </div>
+      <div className="flex items-center gap-2 ml-auto">
+        <Eye className="w-5 h-5" />
+        <RealtimeAvatarStack
+          roomName={`stream-${streamId}`}
+          user={{ name: "Viewer" }}
+          size="sm"
+          maxVisible={3}
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+### Team Workspace
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function WorkspaceHeader() {
+  const { data: user } = useQuery(convexQuery(api.users.current, {}));
+
+  if (!user) return null;
+
+  return (
+    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold">Team Workspace</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground">Who's online:</span>
+          <RealtimeAvatarStack
+            roomName="team-main"
+            user={{
+              name: user.name ?? "Anonymous",
+              image: user.image,
+            }}
+          />
+        </div>
+      </div>
+    </header>
+  );
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Avatars not appearing">
+    - Ensure Convex is running (`npx convex dev`)
+    - Check that `ConvexClientProvider` wraps your app
+    - Verify the room name is consistent
+  </Accordion>
+
+  <Accordion title="User count shows 0">
+    - Ensure the user object has a valid `name` property
+    - Check browser console for errors
+    - Verify presence mutations are working in Convex dashboard
+  </Accordion>
+
+  <Accordion title="Old users not disappearing">
+    - Check that heartbeat is running (default 10 seconds)
+    - Verify cleanup logic filters users by `lastSeen`
+    - Ensure `PRESENCE_TIMEOUT` is set correctly (default 30 seconds)
+  </Accordion>
+
+  <Accordion title="Multiple avatars for same user">
+    - This indicates duplicate session IDs
+    - Ensure session IDs are unique per component instance
+    - Avoid storing session IDs in localStorage
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [Realtime Cursors](/tanstack/realtime-cursor) - Show cursor positions
+- [Realtime Chat](/tanstack/realtime-chat) - Add chat to collaboration
+- [Current User Avatar](/tanstack/current-user-avatar) - Display user profile

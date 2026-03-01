@@ -1,0 +1,422 @@
+---
+title: FAQ
+description: Frequently asked questions about Convex UI including installation, framework support, authentication, and troubleshooting.
+---
+
+<Info>
+  Can't find what you're looking for? Join the [Convex Discord](https://convex.dev/community) or check the [Convex documentation](https://docs.convex.dev).
+</Info>
+
+## Getting started
+
+<AccordionGroup>
+  <Accordion title="How does Convex UI work?">
+    Convex UI uses the **shadcn/ui registry system** to install components directly into your project:
+
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/password-based-auth-nextjs"
+    ```
+
+    This single command:
+    - Downloads React components to your `src/components/` directory
+    - Adds Convex backend functions to your `convex/` directory
+    - Installs any required npm dependencies
+    - Creates environment variable templates
+
+    <Info>
+      Unlike traditional npm packages, these files become **your code**. Customize anything—no upstream updates to worry about.
+    </Info>
+  </Accordion>
+
+  <Accordion title="Will it overwrite my existing files?">
+    **No.** The CLI is safe to run in existing projects:
+
+    | Scenario | Behavior |
+    |----------|----------|
+    | New file | Created automatically |
+    | Existing file (same content) | Skipped |
+    | Existing file (different content) | You're prompted to choose |
+
+    <Tip>
+      Always commit your changes to Git before adding components. This gives you a clean diff to review what changed.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Can I use this in an existing project?">
+    Yes! Convex UI works great with existing projects. The components integrate alongside your current code.
+
+    **Recommended workflow:**
+    <Steps>
+      <Step title="Commit your current work">
+        Make sure your Git working directory is clean
+      </Step>
+      <Step title="Review installation">
+        Check what files will be added before running the command
+      </Step>
+      <Step title="Install component">
+        Run the `add` command for your chosen component
+      </Step>
+      <Step title="Review changes">
+        Use `git diff` to see exactly what was added or modified
+      </Step>
+    </Steps>
+
+    If you already have Convex or shadcn/ui configured, the components will use your existing setup.
+  </Accordion>
+
+  <Accordion title="Do I need to set up Convex first?">
+    Yes, but it only takes two commands:
+
+    ```bash
+    npm install convex @convex-dev/auth
+    npx convex dev
+    ```
+
+    That's it. No dashboard configuration, no account creation (for local development), no complex setup.
+
+    See the [Quick Start](/quickstart) guide for complete setup instructions.
+  </Accordion>
+
+  <Accordion title="What's the difference between Convex UI and shadcn/ui?">
+    **shadcn/ui** provides UI primitives (buttons, inputs, dialogs) with no backend logic.
+
+    **Convex UI** builds on shadcn/ui and adds:
+    - Convex backend functions (queries, mutations)
+    - Database schema definitions
+    - Authentication logic
+    - Realtime subscriptions
+    - Full-stack features out of the box
+
+    You need both: shadcn/ui for the base components, Convex UI for the features.
+  </Accordion>
+</AccordionGroup>
+
+## Technical questions
+
+<AccordionGroup>
+  <Accordion title="How does realtime work?">
+    Convex provides **automatic realtime subscriptions** through reactive queries. When data changes anywhere, your UI updates instantly.
+
+    ```tsx
+    // This component automatically re-renders when messages change
+const messages = useQuery(api.messages.list, { roomId: "general" });
+    ```
+
+    **No extra setup required:**
+    - ❌ No WebSocket configuration
+    - ❌ No polling intervals
+    - ❌ No cache invalidation logic
+    - ❌ No optimistic update boilerplate
+
+    The realtime connection is built into every `useQuery` hook. This powers features like live chat, presence indicators, and collaborative cursors.
+
+    <Info>
+      Read more about [Convex reactivity](https://docs.convex.dev/using/reactivity) in the official docs.
+    </Info>
+  </Accordion>
+
+  <Accordion title="How does local development work?">
+    Local development with Convex is seamless:
+
+    <Steps>
+      <Step title="Start dev server">
+        Run `npx convex dev` in your terminal
+      </Step>
+      <Step title="Edit backend functions">
+        Modify files in the `convex/` directory
+      </Step>
+      <Step title="Changes sync instantly">
+        Functions hot reload without restarting the server
+      </Step>
+      <Step title="Deploy when ready">
+        Run `npx convex deploy` to push to production
+      </Step>
+    </Steps>
+
+    Your database schema lives in code (`convex/schema.ts`) and is version-controlled with your app.
+
+    <Tip>
+      The Convex dashboard provides a data browser and logs viewer at [convex.dev/dashboard](https://convex.dev/dashboard).
+    </Tip>
+  </Accordion>
+
+  <Accordion title="What authentication options are available?">
+    Convex UI provides two authentication patterns using [`@convex-dev/auth`](https://labs.convex.dev/auth):
+
+    ### Password-based authentication
+    - Email/password sign-in
+    - User registration with validation
+    - Forgot password flow
+    - Password reset via email
+    - Email verification
+
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/password-based-auth-nextjs"
+    ```
+
+    ### Social authentication (OAuth)
+    - GitHub sign-in
+    - Google sign-in
+    - Extensible for additional providers
+
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/social-auth-nextjs"
+    ```
+
+    Both patterns include secure session management, protected routes, and user profile handling.
+  </Accordion>
+
+  <Accordion title="Can I use my own database instead of Convex?">
+    No. Convex UI components are tightly integrated with Convex's reactive query system. The realtime functionality, type generation, and backend functions all depend on Convex.
+
+    If you need traditional REST APIs or a different database, consider using standard shadcn/ui components and building your own backend integration.
+
+    <Info>
+      Convex itself is flexible and can integrate with external services via HTTP actions. See [external APIs in Convex](https://docs.convex.dev/functions/actions).
+    </Info>
+  </Accordion>
+
+  <Accordion title="Why React only?">
+    Three reasons:
+
+    1. **shadcn/ui is React-based** — Convex UI builds directly on top of it
+    2. **Convex has first-class React support** — Hooks like `useQuery` and `useMutation` make realtime seamless
+    3. **It's established tooling** — Not a new library, just React components + Convex working together
+
+    <Info>
+      The backend functions in `convex/` work with any frontend. Only the React components are framework-specific. You could build a Vue or Svelte frontend that calls the same Convex functions.
+    </Info>
+  </Accordion>
+</AccordionGroup>
+
+## Framework support
+
+<AccordionGroup>
+  <Accordion title="Which frameworks are supported?">
+    Convex UI supports multiple React frameworks:
+
+    | Framework | Status | Auth | Storage | Realtime |
+    |-----------|--------|------|---------|----------|
+    | **Next.js** | ✅ Full support | ✅ | ✅ | ✅ |
+    | **React (Vite)** | ✅ Full support | ✅ | ✅ | ✅ |
+    | **TanStack Start** | ✅ Full support | ✅ | ✅ | ✅ |
+    | **React Router v7** | ✅ Full support | ✅ | ✅ | ✅ |
+
+    Each framework has its own:
+    - Client configuration (`lib/convex/client.ts`)
+    - Provider setup (`lib/convex/provider.tsx`)
+    - Routing patterns (pages vs routes)
+    - Environment variable prefixes (`NEXT_PUBLIC_` vs `VITE_`)
+  </Accordion>
+
+  <Accordion title="I already have shadcn/ui installed">
+    Perfect! You're ready to go. Just run any `add` command to install Convex UI components:
+
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/realtime-chat-nextjs"
+    ```
+
+    The components will use your existing `components.json` configuration and theme settings.
+  </Accordion>
+
+  <Accordion title="I already have Convex set up">
+    Great! Your existing Convex configuration will be used automatically. The components add new files to your `convex/` directory alongside your existing functions.
+
+    <Warning>
+      If you have an existing `convex/schema.ts`, you may need to merge schema definitions manually. The CLI will prompt you if there are conflicts.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Can I use this with App Router (Next.js)?">
+    Yes! All Next.js components support both App Router and Pages Router.
+
+    **App Router example:**
+    ```tsx app/page.tsx
+    import { RealtimeChat } from "@/components/realtime-chat";
+
+    export default function Home() {
+      return <RealtimeChat roomName="general" username="Alice" />;
+    }
+    ```
+
+    **Pages Router example:**
+    ```tsx pages/index.tsx
+    import { RealtimeChat } from "@/components/realtime-chat";
+
+    export default function Home() {
+      return <RealtimeChat roomName="general" username="Alice" />;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="I used an AI code generator (v0, Bolt, Lovable)">
+    If your AI-generated app uses Convex, you can add Convex UI components directly. The CLI works the same way—just be mindful of existing auth or schema configurations.
+
+    **Recommended workflow:**
+    <Steps>
+      <Step title="Review AI-generated code">
+        Check what's already in `convex/schema.ts` and `convex/auth.ts`
+      </Step>
+      <Step title="Commit to Git">
+        Save your current state before making changes
+      </Step>
+      <Step title="Add Convex UI components">
+        Run the add command for your desired component
+      </Step>
+      <Step title="Resolve conflicts">
+        Merge any schema conflicts manually if prompted
+      </Step>
+    </Steps>
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Components aren't connecting to Convex">
+    Check your environment variables:
+
+    **Next.js** (`.env.local`):
+    ```bash
+    NEXT_PUBLIC_CONVEX_URL=https://your-project.convex.cloud
+    CONVEX_DEPLOYMENT=dev:your-project-name
+    ```
+
+    **Vite, TanStack, React Router** (`.env` or `.env.local`):
+    ```bash
+    VITE_CONVEX_URL=https://your-project.convex.cloud
+    CONVEX_DEPLOYMENT=dev:your-project-name
+    ```
+
+    For authentication components, also add:
+    ```bash
+    CONVEX_SITE_URL=http://localhost:3000
+    ```
+
+    <Tip>
+      Run `npx convex dev` to see your actual deployment URL in the terminal output.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Schema type errors after adding components">
+    If you see TypeScript errors in `convex/schema.ts`, you likely have conflicting table definitions.
+
+    **How to fix:**
+    <Steps>
+      <Step title="Open convex/schema.ts">
+        Look for duplicate table definitions
+      </Step>
+      <Step title="Merge duplicates">
+        Combine fields from both definitions into one
+      </Step>
+      <Step title="Check indexes">
+        Ensure all index names are unique across tables
+      </Step>
+      <Step title="Validate schema">
+        Run `npx convex dev` to check for errors
+      </Step>
+    </Steps>
+
+    <Warning>
+      Each table can only be defined once. If you need multiple features, merge their schema definitions.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Authentication isn't working">
+    Common auth issues and solutions:
+
+    | Issue | Solution |
+    |-------|----------|
+    | "Invalid URL" error | Check `CONVEX_SITE_URL` matches your dev server (e.g., `http://localhost:3000`) |
+    | OAuth redirect fails | Verify callback URLs in GitHub/Google provider settings |
+    | Session not persisting | Ensure provider wraps your app in `layout.tsx` or `_app.tsx` |
+    | "Not authenticated" in API calls | Check that auth middleware is properly configured |
+
+    **Next.js App Router:**
+    ```tsx app/layout.tsx
+    import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
+
+    export default function RootLayout({ children }) {
+      return (
+        <ConvexAuthNextjsServerProvider>
+          {children}
+        </ConvexAuthNextjsServerProvider>
+      );
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Realtime updates aren't working">
+    Make sure:
+
+    1. **`convex dev` is running** — The dev server must be active for realtime to work
+    2. **You're using `useQuery`** — Only queries (not actions) provide realtime subscriptions
+    3. **Provider is configured** — Your app must be wrapped with `ConvexProvider`
+    4. **Network connection** — Check browser console for connection errors
+
+    Test the connection:
+    ```tsx
+    import { useConvex } from "convex/react";
+
+    const convex = useConvex();
+    console.log(convex.connectionState()); // Should be "connected"
+    ```
+  </Accordion>
+
+  <Accordion title="File uploads failing">
+    For the dropzone component, verify:
+
+    1. **Storage is enabled** — It's enabled by default in Convex
+    2. **File size limits** — Default max is 1GB, configurable in Convex settings
+    3. **CORS configuration** — Check `convex/http.ts` for proper CORS headers
+    4. **Authentication** — File uploads may require an authenticated user
+
+    Example storage query:
+    ```ts convex/files.ts
+    import { query } from "./_generated/server";
+
+    export const getUrl = query({
+      args: { storageId: v.id("_storage") },
+      handler: async (ctx, { storageId }) => {
+        return await ctx.storage.getUrl(storageId);
+      },
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="TypeScript errors in _generated folder">
+    The `convex/_generated` folder is auto-generated. Never edit it manually.
+
+    **To fix TypeScript errors:**
+    <Steps>
+      <Step title="Restart Convex dev server">
+        Stop `convex dev` and run it again
+      </Step>
+      <Step title="Restart TypeScript server">
+        In VS Code: `Cmd/Ctrl + Shift + P` → "TypeScript: Restart TS Server"
+      </Step>
+      <Step title="Clear generated files">
+        Delete `convex/_generated` and let it regenerate
+      </Step>
+    </Steps>
+
+    If errors persist, check for syntax errors in your `convex/schema.ts` or function files.
+  </Accordion>
+</AccordionGroup>
+
+## Need more help?
+
+<CardGroup cols={2}>
+  <Card title="Convex Discord" icon="discord" href="https://convex.dev/community">
+    Get help from the Convex community and team
+  </Card>
+  <Card title="Convex Docs" icon="book" href="https://docs.convex.dev">
+    Learn more about Convex queries, mutations, and architecture
+  </Card>
+  <Card title="shadcn/ui Docs" icon="palette" href="https://ui.shadcn.com">
+    Explore base UI components and styling options
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/BankkRoll/Convex-UI">
+    Report bugs or request features for Convex UI
+  </Card>
+</CardGroup>

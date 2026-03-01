@@ -1,0 +1,617 @@
+---
+title: Realtime Cursors
+description: Display real-time cursor positions of other users in collaborative applications
+---
+
+## Overview
+
+Show where other users are pointing in real-time. Perfect for collaborative applications like whiteboards, design tools, or document editors. Uses Convex presence tracking with smooth animations via Framer Motion.
+
+## Features
+
+- Real-time cursor position tracking
+- Smooth cursor animations
+- Custom user colors
+- Username labels
+- Throttled updates for performance
+- Automatic cleanup on disconnect
+- Container-relative positioning
+- TypeScript support
+
+## Installation
+
+<Steps>
+  <Step title="Install the component">
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/realtime-cursor-tanstack
+    ```
+  </Step>
+
+  <Step title="Install Framer Motion">
+    Framer Motion will be installed automatically, but if needed:
+    ```bash
+    npm install framer-motion
+    ```
+  </Step>
+
+  <Step title="Start Convex">
+    ```bash
+    npx convex dev
+    ```
+  </Step>
+</Steps>
+
+## What Gets Installed
+
+### Components
+
+- `realtime-cursors.tsx` - Container for tracking cursors
+- `cursor.tsx` - Individual cursor display
+
+### Hooks
+
+- `use-realtime-cursors.ts` - Cursor position management
+
+### Backend (Convex)
+
+- `convex/presence.ts` - Presence tracking functions
+- `convex/schema.ts` - Presence database schema
+
+## Usage
+
+### Basic Cursors
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+
+export function CollaborativeCanvas() {
+  return (
+    <RealtimeCursors
+      roomName="canvas-room"
+      username="Alice"
+      className="h-screen w-full bg-white"
+    >
+      {/* Your canvas content */}
+      <div className="p-8">
+        <h1>Collaborative Whiteboard</h1>
+      </div>
+    </RealtimeCursors>
+  );
+}
+```
+
+### With Custom Colors
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+
+const userColors = [
+  "#3b82f6", // blue
+  "#ef4444", // red
+  "#10b981", // green
+  "#f59e0b", // amber
+  "#8b5cf6", // purple
+];
+
+export function CollaborativeEditor() {
+  const userColor = userColors[Math.floor(Math.random() * userColors.length)];
+
+  return (
+    <RealtimeCursors
+      roomName="editor"
+      username="Alice"
+      userColor={userColor}
+      className="min-h-screen"
+    >
+      <textarea className="w-full h-full p-4" />
+    </RealtimeCursors>
+  );
+}
+```
+
+### With Authentication
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function AuthenticatedCollaboration() {
+  const { data: user } = useQuery(convexQuery(api.users.current, {}));
+  const userName = useCurrentUserName();
+
+  if (!user || !userName) {
+    return <div>Please sign in</div>;
+  }
+
+  return (
+    <RealtimeCursors
+      roomName="design-tool"
+      username={userName}
+      userColor={user.color ?? "#3b82f6"}
+      className="h-screen"
+    >
+      {/* Design tool UI */}
+    </RealtimeCursors>
+  );
+}
+```
+
+### Multiple Collaboration Areas
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+
+export function MultiAreaCollaboration() {
+  const username = "Alice";
+
+  return (
+    <Tabs defaultValue="canvas">
+      <TabsContent value="canvas">
+        <RealtimeCursors
+          roomName="canvas-1"
+          username={username}
+          className="h-[600px] border rounded-lg"
+        >
+          <canvas width={800} height={600} />
+        </RealtimeCursors>
+      </TabsContent>
+      
+      <TabsContent value="editor">
+        <RealtimeCursors
+          roomName="editor-1"
+          username={username}
+          className="h-[600px] border rounded-lg"
+        >
+          <div className="p-4">Editor content</div>
+        </RealtimeCursors>
+      </TabsContent>
+    </Tabs>
+  );
+}
+```
+
+## API Reference
+
+### RealtimeCursors Props
+
+```typescript
+interface RealtimeCursorsProps {
+  roomName: string;
+  username: string;
+  userColor?: string;
+  children?: React.ReactNode;
+  className?: string;
+}
+```
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the collaboration room. Users in the same room see each other's cursors.
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name shown next to the cursor.
+</ParamField>
+
+<ParamField path="userColor" type="string" default="#3b82f6">
+  CSS color for this user's cursor (e.g., `"#ef4444"`, `"rgb(239, 68, 68)"`, `"red"`)
+</ParamField>
+
+<ParamField path="children" type="ReactNode">
+  Content to display inside the cursor-tracked area.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the container.
+</ParamField>
+
+### useRealtimeCursors Hook
+
+```typescript
+interface UseRealtimeCursorsProps {
+  roomName: string;
+  username: string;
+  userColor?: string;
+  throttleMs?: number;
+}
+
+interface UseRealtimeCursorsReturn {
+  cursors: Cursor[];
+  updateCursor: (position: { x: number; y: number }) => void;
+  createMouseMoveHandler: (container: HTMLElement) => (e: MouseEvent) => void;
+  setContainer: (container: HTMLElement | null) => void;
+  isConnected: boolean;
+  sessionId: string;
+}
+
+interface Cursor {
+  id: string;
+  name: string;
+  color: string;
+  position: { x: number; y: number };
+}
+```
+
+<ParamField path="throttleMs" type="number" default={100}>
+  Milliseconds between cursor position updates. Lower = more responsive, higher = less bandwidth.
+</ParamField>
+
+**Example:**
+
+```tsx
+import { useRealtimeCursors } from "@/hooks/use-realtime-cursors";
+
+function CustomCursorTracking() {
+  const { cursors, updateCursor, isConnected } = useRealtimeCursors({
+    roomName: "custom-room",
+    username: "Alice",
+    userColor: "#ef4444",
+    throttleMs: 50, // More responsive
+  });
+
+  return (
+    <div>
+      <div>Connected: {isConnected ? "Yes" : "No"}</div>
+      <div>Active cursors: {cursors.length}</div>
+      {cursors.map(cursor => (
+        <div key={cursor.id}>
+          {cursor.name} at ({cursor.position.x}, {cursor.position.y})
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Backend Implementation
+
+### Presence Schema
+
+```typescript convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  presence: defineTable({
+    roomId: v.string(),
+    sessionId: v.string(),
+    data: v.any(), // Cursor position, name, color
+    lastSeen: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_session", ["sessionId"]),
+});
+```
+
+### Update Presence
+
+```typescript convex/presence.ts
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+export const update = mutation({
+  args: {
+    roomId: v.string(),
+    sessionId: v.string(),
+    data: v.any(),
+  },
+  handler: async (ctx, args) => {
+    // Find existing presence record
+    const existing = await ctx.db
+      .query("presence")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .first();
+
+    const now = Date.now();
+
+    if (existing) {
+      // Update existing
+      await ctx.db.patch(existing._id, {
+        roomId: args.roomId,
+        data: args.data,
+        lastSeen: now,
+      });
+    } else {
+      // Create new
+      await ctx.db.insert("presence", {
+        roomId: args.roomId,
+        sessionId: args.sessionId,
+        data: args.data,
+        lastSeen: now,
+      });
+    }
+  },
+});
+```
+
+### List Cursors
+
+```typescript convex/presence.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+const PRESENCE_TIMEOUT = 30000; // 30 seconds
+
+export const list = query({
+  args: { roomId: v.string() },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    
+    return await ctx.db
+      .query("presence")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .filter((q) => q.gt(q.field("lastSeen"), now - PRESENCE_TIMEOUT))
+      .collect();
+  },
+});
+```
+
+## Features in Detail
+
+### Session Management
+
+Each component instance gets a unique session ID:
+
+```typescript
+function generateSessionId(): string {
+  return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+```
+
+This ensures:
+- Multiple tabs/windows have separate cursors
+- Your own cursor is filtered out
+- Disconnected sessions are cleaned up
+
+### Throttling
+
+Cursor updates are throttled to reduce network traffic:
+
+```typescript
+const updateCursor = useCallback((position) => {
+  const now = Date.now();
+  if (now - lastUpdateRef.current < throttleMs) {
+    return; // Skip update
+  }
+  lastUpdateRef.current = now;
+  
+  updatePresence({ roomId, data: { position, name, color }, sessionId });
+}, [throttleMs]);
+```
+
+### Container-Relative Positioning
+
+Cursor positions are relative to the container:
+
+```typescript
+const handleMove = (e: MouseEvent) => {
+  const rect = container.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  updateCursor({ x, y });
+};
+```
+
+This works correctly even when:
+- Container is scrolled
+- Container has padding/margins
+- Page is zoomed
+
+### Smooth Animations
+
+Cursors animate smoothly using Framer Motion:
+
+```tsx cursor.tsx
+import { motion } from "framer-motion";
+
+export function Cursor({ name, color, position }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{
+        x: position.x,
+        y: position.y,
+        opacity: 1,
+        scale: 1,
+      }}
+      exit={{ opacity: 0, scale: 0.5 }}
+      transition={{ type: "spring", damping: 30, stiffness: 300 }}
+      style={{ color }}
+    >
+      <svg>...</svg>
+      <span>{name}</span>
+    </motion.div>
+  );
+}
+```
+
+## Customization
+
+### Custom Cursor Design
+
+```tsx cursor.tsx
+export function Cursor({ name, color, position }: CursorProps) {
+  return (
+    <motion.div
+      className="pointer-events-none absolute z-50"
+      animate={{ x: position.x, y: position.y }}
+    >
+      {/* Custom cursor shape */}
+      <div 
+        className="w-4 h-4 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      
+      {/* Name badge */}
+      <div 
+        className="ml-2 mt-1 px-2 py-1 rounded text-xs text-white whitespace-nowrap"
+        style={{ backgroundColor: color }}
+      >
+        {name}
+      </div>
+    </motion.div>
+  );
+}
+```
+
+### Adjust Throttling
+
+Change update frequency:
+
+```tsx
+const { cursors } = useRealtimeCursors({
+  roomName: "room",
+  username: "Alice",
+  throttleMs: 50, // Update every 50ms (more responsive)
+});
+
+// Or
+
+const { cursors } = useRealtimeCursors({
+  roomName: "room",
+  username: "Alice",
+  throttleMs: 200, // Update every 200ms (less bandwidth)
+});
+```
+
+### Add Cursor Trails
+
+```tsx
+import { motion } from "framer-motion";
+
+export function CursorWithTrail({ name, color, position }: CursorProps) {
+  return (
+    <>
+      {/* Trail effect */}
+      <motion.div
+        className="pointer-events-none absolute rounded-full"
+        animate={{
+          x: position.x - 8,
+          y: position.y - 8,
+          opacity: 0.3,
+        }}
+        style={{ backgroundColor: color }}
+      />
+      
+      {/* Main cursor */}
+      <motion.div
+        className="pointer-events-none absolute"
+        animate={{ x: position.x, y: position.y }}
+      >
+        {/* Cursor SVG */}
+      </motion.div>
+    </>
+  );
+}
+```
+
+## Performance
+
+### Optimizations
+
+1. **Throttled Updates**: Position updates are limited to once per 100ms by default
+2. **Indexed Queries**: Presence data is queried efficiently by room
+3. **Automatic Cleanup**: Inactive cursors are removed after 30 seconds
+4. **Client-Side Filtering**: Your own cursor is filtered out on the client
+
+### Scaling
+
+For rooms with many users:
+
+```typescript
+// Increase throttling
+throttleMs: 200, // Less frequent updates
+
+// Or implement spatial partitioning
+const visibleCursors = cursors.filter(cursor => {
+  const distance = Math.sqrt(
+    Math.pow(cursor.position.x - myPosition.x, 2) +
+    Math.pow(cursor.position.y - myPosition.y, 2)
+  );
+  return distance < VISIBILITY_RADIUS;
+});
+```
+
+## Examples
+
+### Whiteboard
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+import { useRef } from "react";
+
+export function Whiteboard() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  return (
+    <RealtimeCursors
+      roomName="whiteboard"
+      username="Alice"
+      className="h-screen flex items-center justify-center bg-gray-50"
+    >
+      <canvas
+        ref={canvasRef}
+        width={1200}
+        height={800}
+        className="border rounded-lg bg-white shadow-lg"
+      />
+    </RealtimeCursors>
+  );
+}
+```
+
+### Document Editor
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+
+export function CollaborativeDocument() {
+  return (
+    <RealtimeCursors
+      roomName="document-123"
+      username="Alice"
+      className="max-w-4xl mx-auto p-8"
+    >
+      <div className="prose prose-lg">
+        <h1>Collaborative Document</h1>
+        <p contentEditable>Edit this document together...</p>
+      </div>
+    </RealtimeCursors>
+  );
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cursors not appearing">
+    - Ensure Convex is running (`npx convex dev`)
+    - Verify the room name is consistent across clients
+    - Check that `ConvexClientProvider` wraps your app
+  </Accordion>
+
+  <Accordion title="Cursor positions are wrong">
+    - Make sure the container has a defined size
+    - Check that the container's position is relative or absolute
+    - Verify no CSS transforms are applied to parents
+  </Accordion>
+
+  <Accordion title="Seeing my own cursor">
+    - This indicates session IDs are being shared (e.g., via localStorage)
+    - Ensure you're generating unique session IDs per instance
+  </Accordion>
+
+  <Accordion title="Cursors are laggy">
+    - Reduce `throttleMs` for more responsive updates
+    - Check network latency in browser dev tools
+    - Consider spatial partitioning for many users
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [Realtime Avatar Stack](/tanstack/realtime-avatar-stack) - Show active users
+- [Realtime Chat](/tanstack/realtime-chat) - Add chat to collaboration
+- [Current User Avatar](/tanstack/current-user-avatar) - Display user profiles

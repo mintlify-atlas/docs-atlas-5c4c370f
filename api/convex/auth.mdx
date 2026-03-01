@@ -1,0 +1,246 @@
+---
+title: "Authentication"
+description: "Authentication configuration and exported functions for Convex Auth"
+---
+
+## Overview
+
+The authentication system uses `@convex-dev/auth` with support for multiple providers including Password, Anonymous, GitHub, and Google OAuth.
+
+## Configuration
+
+### Auth Config
+
+Location: `convex/auth.config.ts:14`
+
+```typescript
+export default {
+  providers: [
+    {
+      domain: process.env.CONVEX_SITE_URL!,
+      applicationID: "convex",
+    },
+  ],
+} satisfies AuthConfig;
+```
+
+#### Environment Variables
+
+<ParamField path="CONVEX_SITE_URL" type="string" required>
+  Your Convex deployment URL. Automatically set by Convex.
+</ParamField>
+
+<ParamField path="AUTH_GITHUB_ID" type="string" optional>
+  GitHub OAuth application client ID. Required for GitHub authentication.
+</ParamField>
+
+<ParamField path="AUTH_GITHUB_SECRET" type="string" optional>
+  GitHub OAuth application client secret. Required for GitHub authentication.
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_ID" type="string" optional>
+  Google OAuth client ID. Required for Google authentication.
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_SECRET" type="string" optional>
+  Google OAuth client secret. Required for Google authentication.
+</ParamField>
+
+## Auth Setup
+
+Location: `convex/auth.ts:23`
+
+### Providers
+
+The authentication system dynamically loads providers based on available environment variables:
+
+```typescript
+const providers = [
+  Password,
+  Anonymous,
+];
+
+// GitHub provider (optional)
+if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
+  providers.push(GitHub);
+}
+
+// Google provider (optional)
+if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
+  providers.push(Google);
+}
+```
+
+#### Built-in Providers
+
+<ParamField path="Password" type="Provider" required>
+  Email and password authentication provider from `@convex-dev/auth/providers/Password`
+</ParamField>
+
+<ParamField path="Anonymous" type="Provider" required>
+  Anonymous authentication provider for demo/guest access from `@convex-dev/auth/providers/Anonymous`
+</ParamField>
+
+<ParamField path="GitHub" type="Provider" optional>
+  GitHub OAuth provider from `@auth/core/providers/github`. Enabled when GitHub credentials are configured.
+</ParamField>
+
+<ParamField path="Google" type="Provider" optional>
+  Google OAuth provider from `@auth/core/providers/google`. Enabled when Google credentials are configured.
+</ParamField>
+
+## Exported Functions
+
+### auth
+
+Middleware function for protecting routes and queries.
+
+```typescript
+export const { auth } = convexAuth({ ... });
+```
+
+### signIn
+
+Function to initiate sign-in flow.
+
+```typescript
+export const { signIn } = convexAuth({ ... });
+```
+
+### signOut
+
+Function to sign out the current user.
+
+```typescript
+export const { signOut } = convexAuth({ ... });
+```
+
+### store
+
+Auth state storage helpers.
+
+```typescript
+export const { store } = convexAuth({ ... });
+```
+
+### isAuthenticated
+
+Helper to check if user is authenticated.
+
+```typescript
+export const { isAuthenticated } = convexAuth({ ... });
+```
+
+## Callbacks
+
+### createOrUpdateUser
+
+Location: `convex/auth.ts:26`
+
+Callback invoked when a user signs in. Creates new users or updates existing ones.
+
+```typescript
+async createOrUpdateUser(ctx, args) {
+  const isAnonymous = args.provider?.id === "anonymous";
+  
+  if (args.existingUserId) {
+    return args.existingUserId;
+  }
+  
+  const name = isAnonymous
+    ? `User-${Math.floor(Math.random() * 10000)}`
+    : args.profile?.name;
+  
+  const userId = await ctx.db.insert("users", {
+    name,
+    email: args.profile?.email,
+    image: args.profile?.image,
+    isAnonymous,
+  });
+  
+  return userId;
+}
+```
+
+#### Parameters
+
+<ParamField path="ctx" type="MutationCtx" required>
+  Convex mutation context with database access
+</ParamField>
+
+<ParamField path="args" type="object" required>
+  Authentication arguments
+  
+  <ParamField path="args.existingUserId" type="Id<'users'>" optional>
+    ID of existing user if found
+  </ParamField>
+  
+  <ParamField path="args.provider" type="object" optional>
+    Authentication provider information
+    
+    <ParamField path="args.provider.id" type="string">
+      Provider identifier (e.g., "anonymous", "password", "github")
+    </ParamField>
+  </ParamField>
+  
+  <ParamField path="args.profile" type="object" optional>
+    User profile from OAuth provider
+    
+    <ParamField path="args.profile.name" type="string" optional>
+      User's display name from provider
+    </ParamField>
+    
+    <ParamField path="args.profile.email" type="string" optional>
+      User's email from provider
+    </ParamField>
+    
+    <ParamField path="args.profile.image" type="string" optional>
+      User's profile image URL from provider
+    </ParamField>
+  </ParamField>
+</ParamField>
+
+#### Returns
+
+<ResponseField name="userId" type="Id<'users'>">
+  The user ID (existing or newly created)
+</ResponseField>
+
+#### Behavior
+
+- For **anonymous users**: Generates a random name like `User-1234`
+- For **existing users**: Returns the existing user ID
+- For **new users**: Creates a user record with profile data and `isAnonymous` flag
+- Automatically sets `isAnonymous: true` for anonymous provider logins
+
+## Usage Examples
+
+### Check Authentication Status
+
+```typescript
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { query } from "./_generated/server";
+
+export const myQuery = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    // ... authenticated logic
+  },
+});
+```
+
+### Support Demo Mode
+
+```typescript
+export const myMutation = mutation({
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    // Works with or without authentication
+    const finalUserId = userId ?? undefined;
+    // ... logic that supports both authenticated and demo mode
+  },
+});
+```

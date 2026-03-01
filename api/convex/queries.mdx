@@ -1,0 +1,485 @@
+---
+title: "Queries"
+description: "Convex query functions for reading data from the database"
+---
+
+## Overview
+
+Queries are read-only functions that fetch data from the Convex database. They automatically update in real-time when the underlying data changes.
+
+## Users
+
+### current
+
+Get the currently authenticated user's profile.
+
+**Location:** `convex/users.ts:16`
+
+```typescript
+export const current = query({
+  args: {},
+  returns: v.union(userValidator, v.null()),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return null;
+    }
+    return await ctx.db.get(userId);
+  },
+});
+```
+
+#### Arguments
+
+No arguments required.
+
+#### Returns
+
+<ResponseField name="user" type="object | null">
+  The current user object or null if not authenticated
+  
+  <ResponseField name="_id" type="Id<'users'>">
+    User's unique identifier
+  </ResponseField>
+  
+  <ResponseField name="_creationTime" type="number">
+    Timestamp when user was created
+  </ResponseField>
+  
+  <ResponseField name="name" type="string" optional>
+    User's display name
+  </ResponseField>
+  
+  <ResponseField name="email" type="string" optional>
+    User's email address
+  </ResponseField>
+  
+  <ResponseField name="image" type="string" optional>
+    URL to user's profile image
+  </ResponseField>
+  
+  <ResponseField name="emailVerificationTime" type="number" optional>
+    Timestamp when email was verified
+  </ResponseField>
+  
+  <ResponseField name="isAnonymous" type="boolean" optional>
+    Whether this is an anonymous user
+  </ResponseField>
+</ResponseField>
+
+#### Example
+
+```typescript
+const user = await ctx.runQuery(api.users.current);
+if (user) {
+  console.log(`Logged in as ${user.name}`);
+}
+```
+
+---
+
+### get
+
+Get a user's public profile by ID.
+
+**Location:** `convex/users.ts:35`
+
+```typescript
+export const get = query({
+  args: { userId: v.id("users") },
+  returns: v.union(publicProfileValidator, v.null()),
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      return null;
+    }
+    return {
+      _id: user._id,
+      name: user.name,
+      image: user.image,
+    };
+  },
+});
+```
+
+#### Arguments
+
+<ParamField path="userId" type="Id<'users'>" required>
+  The ID of the user to fetch
+</ParamField>
+
+#### Returns
+
+<ResponseField name="profile" type="object | null">
+  Public profile information or null if user not found
+  
+  <ResponseField name="_id" type="Id<'users'>">
+    User's unique identifier
+  </ResponseField>
+  
+  <ResponseField name="name" type="string" optional>
+    User's display name
+  </ResponseField>
+  
+  <ResponseField name="image" type="string" optional>
+    URL to user's profile image
+  </ResponseField>
+</ResponseField>
+
+#### Example
+
+```typescript
+const profile = await ctx.runQuery(api.users.get, {
+  userId: "j97abc123..."
+});
+console.log(profile?.name); // "Alice"
+```
+
+#### Notes
+
+- Only returns public fields (excludes email and emailVerificationTime)
+- Returns null if user doesn't exist
+
+---
+
+## Messages
+
+### list
+
+Get all messages in a chat room, ordered chronologically.
+
+**Location:** `convex/messages.ts:15`
+
+```typescript
+export const list = query({
+  args: { roomId: v.string() },
+  returns: v.array(messageValidator),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .order("asc")
+      .collect();
+  },
+});
+```
+
+#### Arguments
+
+<ParamField path="roomId" type="string" required>
+  The room/channel identifier to fetch messages from
+</ParamField>
+
+#### Returns
+
+<ResponseField name="messages" type="array">
+  Array of message objects ordered by creation time (oldest first)
+  
+  <ResponseField name="_id" type="Id<'messages'>">
+    Message unique identifier
+  </ResponseField>
+  
+  <ResponseField name="_creationTime" type="number">
+    Timestamp when message was created
+  </ResponseField>
+  
+  <ResponseField name="roomId" type="string">
+    Room/channel identifier
+  </ResponseField>
+  
+  <ResponseField name="userId" type="Id<'users'>" optional>
+    ID of user who sent the message (optional for demo mode)
+  </ResponseField>
+  
+  <ResponseField name="content" type="string">
+    Message text content
+  </ResponseField>
+  
+  <ResponseField name="userName" type="string">
+    Display name of message sender
+  </ResponseField>
+  
+  <ResponseField name="sessionId" type="string" optional>
+    Session identifier for demo mode tracking
+  </ResponseField>
+</ResponseField>
+
+#### Example
+
+```typescript
+const messages = await ctx.runQuery(api.messages.list, {
+  roomId: "general"
+});
+messages.forEach(msg => {
+  console.log(`${msg.userName}: ${msg.content}`);
+});
+```
+
+---
+
+## Presence
+
+### list
+
+Get all active presence entries for a room, filtering out stale entries.
+
+**Location:** `convex/presence.ts:29`
+
+```typescript
+export const list = query({
+  args: { roomId: v.string() },
+  returns: v.array(presenceValidator),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const presenceList = await ctx.db
+      .query("presence")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .collect();
+    
+    // Filter out stale presence entries
+    return presenceList.filter((p) => now - p.lastSeen < PRESENCE_TIMEOUT);
+  },
+});
+```
+
+#### Arguments
+
+<ParamField path="roomId" type="string" required>
+  The room identifier to fetch presence data from
+</ParamField>
+
+#### Returns
+
+<ResponseField name="presence" type="array">
+  Array of active presence entries (within last 30 seconds)
+  
+  <ResponseField name="_id" type="Id<'presence'>">
+    Presence entry unique identifier
+  </ResponseField>
+  
+  <ResponseField name="_creationTime" type="number">
+    Timestamp when presence was created
+  </ResponseField>
+  
+  <ResponseField name="roomId" type="string">
+    Room identifier
+  </ResponseField>
+  
+  <ResponseField name="userId" type="Id<'users'>" optional>
+    User ID (optional for demo mode)
+  </ResponseField>
+  
+  <ResponseField name="sessionId" type="string" optional>
+    Session identifier for demo mode
+  </ResponseField>
+  
+  <ResponseField name="data" type="object">
+    Presence data object
+    
+    <ResponseField name="cursor" type="{x: number, y: number}" optional>
+      Cursor position coordinates
+    </ResponseField>
+    
+    <ResponseField name="position" type="{x: number, y: number}" optional>
+      Position coordinates (alias for cursor)
+    </ResponseField>
+    
+    <ResponseField name="status" type="string" optional>
+      User status text
+    </ResponseField>
+    
+    <ResponseField name="userName" type="string" optional>
+      User's display name
+    </ResponseField>
+    
+    <ResponseField name="userImage" type="string" optional>
+      URL to user's avatar
+    </ResponseField>
+    
+    <ResponseField name="color" type="string" optional>
+      Color code for cursor/avatar
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" optional>
+      Alternative name field
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="lastSeen" type="number">
+    Timestamp of last update
+  </ResponseField>
+</ResponseField>
+
+#### Example
+
+```typescript
+const activeUsers = await ctx.runQuery(api.presence.list, {
+  roomId: "canvas-1"
+});
+activeUsers.forEach(p => {
+  console.log(`${p.data.userName} at (${p.data.cursor?.x}, ${p.data.cursor?.y})`);
+});
+```
+
+#### Notes
+
+- Automatically filters out entries older than 30 seconds (PRESENCE_TIMEOUT)
+- Returns empty array if no active presence
+
+---
+
+## Files
+
+### getUrl
+
+Get the download URL for a file stored in Convex storage.
+
+**Location:** `convex/files.ts:48`
+
+```typescript
+export const getUrl = query({
+  args: { storageId: v.id("_storage") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+```
+
+#### Arguments
+
+<ParamField path="storageId" type="Id<'_storage'>" required>
+  The storage ID of the file
+</ParamField>
+
+#### Returns
+
+<ResponseField name="url" type="string | null">
+  The URL to access the file, or null if file doesn't exist
+</ResponseField>
+
+#### Example
+
+```typescript
+const url = await ctx.runQuery(api.files.getUrl, {
+  storageId: "kg2abc123..."
+});
+if (url) {
+  window.open(url);
+}
+```
+
+---
+
+### list
+
+List files for the current user or session.
+
+**Location:** `convex/files.ts:57`
+
+```typescript
+export const list = query({
+  args: { sessionId: v.optional(v.string()) },
+  returns: v.array(
+    v.object({
+      ...fileValidator.fields,
+      url: v.union(v.string(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    
+    let files;
+    if (userId) {
+      files = await ctx.db
+        .query("files")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+    } else if (args.sessionId) {
+      files = await ctx.db
+        .query("files")
+        .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+        .collect();
+    } else {
+      return [];
+    }
+    
+    return await Promise.all(
+      files.map(async (file) => ({
+        ...file,
+        url: await ctx.storage.getUrl(file.storageId),
+      })),
+    );
+  },
+});
+```
+
+#### Arguments
+
+<ParamField path="sessionId" type="string" optional>
+  Session identifier for demo mode. Required if user is not authenticated.
+</ParamField>
+
+#### Returns
+
+<ResponseField name="files" type="array">
+  Array of file objects with download URLs
+  
+  <ResponseField name="_id" type="Id<'files'>">
+    File unique identifier
+  </ResponseField>
+  
+  <ResponseField name="_creationTime" type="number">
+    Timestamp when file was uploaded
+  </ResponseField>
+  
+  <ResponseField name="storageId" type="Id<'_storage'>">
+    Reference to Convex storage
+  </ResponseField>
+  
+  <ResponseField name="userId" type="Id<'users'>" optional>
+    ID of user who uploaded the file
+  </ResponseField>
+  
+  <ResponseField name="sessionId" type="string" optional>
+    Session identifier for demo uploads
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    Original filename
+  </ResponseField>
+  
+  <ResponseField name="type" type="string">
+    MIME type of the file
+  </ResponseField>
+  
+  <ResponseField name="size" type="number">
+    File size in bytes
+  </ResponseField>
+  
+  <ResponseField name="url" type="string | null">
+    Download URL for the file
+  </ResponseField>
+</ResponseField>
+
+#### Example
+
+```typescript
+// Authenticated user
+const files = await ctx.runQuery(api.files.list, {});
+
+// Demo mode
+const files = await ctx.runQuery(api.files.list, {
+  sessionId: "session_xyz"
+});
+
+files.forEach(file => {
+  console.log(`${file.name} (${file.size} bytes): ${file.url}`);
+});
+```
+
+#### Notes
+
+- For authenticated users: returns their files
+- For demo mode: returns files for the given sessionId
+- Returns empty array if neither userId nor sessionId is available

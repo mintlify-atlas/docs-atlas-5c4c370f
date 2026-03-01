@@ -1,122 +1,100 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Convex UI",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#F97316",
+    "light": "#FED7AA",
+    "dark": "#EA580C"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/BankkRoll/Convex-UI"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/BankkRoll/Convex-UI"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "faq"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Next.js Components",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "nextjs/client",
+              "nextjs/password-based-auth",
+              "nextjs/social-auth",
+              "nextjs/current-user-avatar",
+              "nextjs/realtime-chat",
+              "nextjs/realtime-cursor",
+              "nextjs/realtime-avatar-stack",
+              "nextjs/dropzone"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "React Components",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "react/client",
+              "react/password-based-auth",
+              "react/social-auth",
+              "react/current-user-avatar",
+              "react/realtime-chat",
+              "react/realtime-cursor",
+              "react/realtime-avatar-stack",
+              "react/dropzone"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "TanStack Components",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "tanstack/client",
+              "tanstack/password-based-auth",
+              "tanstack/social-auth",
+              "tanstack/current-user-avatar",
+              "tanstack/realtime-chat",
+              "tanstack/realtime-cursor",
+              "tanstack/realtime-avatar-stack",
+              "tanstack/dropzone"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Components",
             "pages": [
-              "api-reference/introduction"
+              "api/components/authentication",
+              "api/components/realtime",
+              "api/components/storage",
+              "api/components/user"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Convex Backend",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/convex/schema",
+              "api/convex/auth",
+              "api/convex/queries",
+              "api/convex/mutations"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

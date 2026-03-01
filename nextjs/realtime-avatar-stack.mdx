@@ -1,0 +1,529 @@
+---
+title: "Realtime Avatar Stack"
+description: "Display a stack of user avatars showing who's currently present in a room"
+---
+
+## Overview
+
+The Realtime Avatar Stack shows avatars of users currently present in a room. Perfect for:
+
+- Collaborative editors
+- Live presentations
+- Multiplayer applications
+- Team workspaces
+
+**Features:**
+
+- Real-time presence tracking
+- Stacked avatar layout
+- User count display
+- Tooltips with user names
+- Automatic overflow handling
+- Demo mode support
+
+## Installation
+
+```bash
+npx @convex-dev/shadcn add convex/realtime-avatar-stack-nextjs
+```
+
+This installs:
+
+- `RealtimeAvatarStack` component
+- `AvatarStack` display component
+- Custom hooks for presence tracking
+- Complete Convex backend
+
+## Usage
+
+### Basic Example
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+export default function CollaborativeDoc() {
+  return (
+    <div>
+      <header className="border-b p-4 flex justify-between items-center">
+        <h1>Document Title</h1>
+        <RealtimeAvatarStack
+          roomName="doc-123"
+          user={{ name: "Alice" }}
+        />
+      </header>
+      {/* Document content */}
+    </div>
+  );
+}
+```
+
+### With User Image
+
+```tsx
+<RealtimeAvatarStack
+  roomName="meeting-456"
+  user={{
+    name: "Bob Smith",
+    image: "https://example.com/avatar.jpg",
+  }}
+/>
+```
+
+### With Custom Color
+
+```tsx
+<RealtimeAvatarStack
+  roomName="workspace"
+  user={{
+    name: "Charlie",
+    color: "#3b82f6",
+  }}
+  maxVisible={3}
+  size="lg"
+/>
+```
+
+## Component API
+
+### Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the presence room. Users in the same room will see each other.
+</ParamField>
+
+<ParamField path="user" type="object" required>
+  Current user information:
+  
+  - `name` (string, required): Display name
+  - `image` (string, optional): Avatar image URL
+  - `color` (string, optional): Hex color for avatar background
+</ParamField>
+
+<ParamField path="maxVisible" type="number" default="5">
+  Maximum number of avatars to display before showing "+N" indicator
+</ParamField>
+
+<ParamField path="size" type="'sm' | 'md' | 'lg'" default="'md'">
+  Avatar size:
+  - `sm`: 32x32px
+  - `md`: 40x40px
+  - `lg`: 48x48px
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the container
+</ParamField>
+
+## Component Structure
+
+```tsx title="components/realtime-avatar-stack.tsx"
+"use client";
+
+import { AvatarStack } from "./avatar-stack";
+import {
+  useRealtimePresenceRoom,
+  type PresenceUser,
+} from "../hooks/use-realtime-presence-room";
+
+interface RealtimeAvatarStackProps {
+  roomName: string;
+  user: {
+    name: string;
+    image?: string;
+    color?: string;
+  };
+  maxVisible?: number;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}
+
+export function RealtimeAvatarStack({
+  roomName,
+  user,
+  maxVisible = 5,
+  size = "md",
+  className,
+}: RealtimeAvatarStackProps) {
+  const { users, isConnected, userCount } = useRealtimePresenceRoom({
+    roomName,
+    user,
+  });
+
+  const avatarUsers = users.map((u: PresenceUser) => ({
+    id: u.id,
+    name: u.name,
+    image: u.image,
+    color: u.color,
+  }));
+
+  return (
+    <div className={`flex items-center gap-2 ${className ?? ""}`}>
+      <AvatarStack users={avatarUsers} maxVisible={maxVisible} size={size} />
+      {userCount > 0 && (
+        <span className="text-sm text-muted-foreground">
+          {userCount} {userCount === 1 ? "user" : "users"} online
+        </span>
+      )}
+      {!isConnected && (
+        <span className="text-xs text-muted-foreground">(connecting...)</span>
+      )}
+    </div>
+  );
+}
+```
+
+### AvatarStack Component
+
+Handles the visual layout:
+
+```tsx title="components/avatar-stack.tsx"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+interface AvatarStackProps {
+  users: Array<{
+    id: string;
+    name: string;
+    image?: string;
+    color?: string;
+  }>;
+  maxVisible?: number;
+  size?: "sm" | "md" | "lg";
+}
+
+const sizeClasses = {
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-12 w-12 text-base",
+};
+
+export function AvatarStack({
+  users,
+  maxVisible = 5,
+  size = "md",
+}: AvatarStackProps) {
+  const visibleUsers = users.slice(0, maxVisible);
+  const remainingCount = users.length - maxVisible;
+
+  return (
+    <TooltipProvider>
+      <div className="flex -space-x-2">
+        {visibleUsers.map((user) => (
+          <Tooltip key={user.id}>
+            <TooltipTrigger asChild>
+              <Avatar
+                className={`border-2 border-background ${sizeClasses[size]}`}
+                style={{ backgroundColor: user.color }}
+              >
+                <AvatarImage src={user.image} alt={user.name} />
+                <AvatarFallback>
+                  {user.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{user.name}</p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        
+        {remainingCount > 0 && (
+          <Avatar className={`border-2 border-background ${sizeClasses[size]}`}>
+            <AvatarFallback>+{remainingCount}</AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+    </TooltipProvider>
+  );
+}
+```
+
+## Custom Hook
+
+### useRealtimePresenceRoom
+
+Manages presence state:
+
+```tsx title="hooks/use-realtime-presence-room.ts"
+"use client";
+
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
+
+export interface PresenceUser {
+  id: string;
+  name: string;
+  image?: string;
+  color?: string;
+}
+
+interface UseRealtimePresenceRoomProps {
+  roomName: string;
+  user: {
+    name: string;
+    image?: string;
+    color?: string;
+  };
+}
+
+export function useRealtimePresenceRoom({
+  roomName,
+  user,
+}: UseRealtimePresenceRoomProps) {
+  const [sessionId, setSessionId] = useState("");
+  const presences = useQuery(api.presence.list, { roomId: roomName });
+  const updatePresence = useMutation(api.presence.update);
+
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId());
+  }, []);
+
+  // Heartbeat to maintain presence
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const update = () => {
+      updatePresence({
+        roomId: roomName,
+        userName: user.name,
+        image: user.image,
+        color: user.color,
+        sessionId,
+      });
+    };
+
+    update(); // Initial update
+    const interval = setInterval(update, 5000); // Every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [roomName, user, sessionId, updatePresence]);
+
+  const users: PresenceUser[] = (presences ?? []).map((p) => ({
+    id: p._id,
+    name: p.userName,
+    image: p.image,
+    color: p.color,
+  }));
+
+  return {
+    users,
+    userCount: users.length,
+    isConnected: presences !== undefined,
+  };
+}
+```
+
+## Backend Implementation
+
+### Presence Schema
+
+```typescript title="convex/schema.ts"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  presence: defineTable({
+    roomId: v.string(),
+    userId: v.optional(v.id("users")),
+    sessionId: v.string(),
+    userName: v.string(),
+    image: v.optional(v.string()),
+    color: v.optional(v.string()),
+    lastActive: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_session", ["sessionId"]),
+});
+```
+
+### Presence Functions
+
+```typescript title="convex/presence.ts"
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+const PRESENCE_TIMEOUT = 30000; // 30 seconds
+
+export const list = query({
+  args: { roomId: v.string() },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const cutoff = now - PRESENCE_TIMEOUT;
+
+    return await ctx.db
+      .query("presence")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .filter((q) => q.gt(q.field("lastActive"), cutoff))
+      .collect();
+  },
+});
+
+export const update = mutation({
+  args: {
+    roomId: v.string(),
+    userName: v.string(),
+    image: v.optional(v.string()),
+    color: v.optional(v.string()),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("presence")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .first();
+
+    const data = {
+      roomId: args.roomId,
+      userName: args.userName,
+      image: args.image,
+      color: args.color ?? generateRandomColor(),
+      lastActive: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, data);
+    } else {
+      await ctx.db.insert("presence", {
+        ...data,
+        sessionId: args.sessionId,
+      });
+    }
+  },
+});
+```
+
+## Features
+
+### Automatic Presence Updates
+
+The hook sends heartbeat updates every 5 seconds to maintain presence.
+
+### Stale Presence Cleanup
+
+Users inactive for more than 30 seconds are automatically removed from the list.
+
+### Overflow Handling
+
+When there are more users than `maxVisible`, a "+N" indicator shows the remaining count:
+
+```tsx
+<Avatar>
+  <AvatarFallback>+3</AvatarFallback>
+</Avatar>
+```
+
+### Tooltips
+
+Hover over any avatar to see the user's full name.
+
+## Common Patterns
+
+### In Document Header
+
+```tsx
+export function DocumentHeader({ docId }) {
+  return (
+    <header className="flex items-center justify-between p-4 border-b">
+      <h1>Untitled Document</h1>
+      <div className="flex items-center gap-4">
+        <RealtimeAvatarStack
+          roomName={`doc-${docId}`}
+          user={{ name: "Current User" }}
+        />
+        <Button>Share</Button>
+      </div>
+    </header>
+  );
+}
+```
+
+### With Authentication
+
+```tsx
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+export function AuthenticatedAvatarStack({ roomName }) {
+  const user = useQuery(api.users.current);
+  
+  if (!user) return null;
+  
+  return (
+    <RealtimeAvatarStack
+      roomName={roomName}
+      user={{
+        name: user.name ?? "Anonymous",
+        image: user.image,
+      }}
+    />
+  );
+}
+```
+
+### Compact Layout
+
+```tsx
+<RealtimeAvatarStack
+  roomName="meeting"
+  user={{ name: "User" }}
+  maxVisible={3}
+  size="sm"
+  className="ml-auto"
+/>
+```
+
+## Styling
+
+### Avatar Overlap
+
+Avatars overlap with negative margin:
+
+```css
+.flex.-space-x-2 {
+  margin-left: -0.5rem; /* -8px */
+}
+```
+
+### Border for Separation
+
+White border creates visual separation:
+
+```tsx
+<Avatar className="border-2 border-background" />
+```
+
+### Custom Sizes
+
+Define your own size classes:
+
+```typescript
+const sizeClasses = {
+  xs: "h-6 w-6 text-[10px]",
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-12 w-12 text-base",
+  xl: "h-16 w-16 text-lg",
+};
+```
+
+## Performance
+
+- Heartbeat updates every 5 seconds (configurable)
+- Automatic cleanup of stale data
+- Efficient queries with indexes
+- Optimized re-renders with proper deps
+
+## Related
+
+- [Realtime Cursors](/nextjs/realtime-cursor)
+- [Current User Avatar](/nextjs/current-user-avatar)
+- [Realtime Chat](/nextjs/realtime-chat)

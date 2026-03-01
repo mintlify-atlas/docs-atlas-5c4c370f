@@ -1,0 +1,368 @@
+---
+title: "Current User Avatar"
+description: "Display the current authenticated user's avatar with automatic fallbacks and loading states"
+---
+
+## Overview
+
+The Current User Avatar component displays the authenticated user's profile image with:
+
+- Automatic image loading from user profile
+- Initials fallback when no image available
+- Loading skeleton states
+- Multiple size variants
+- Full TypeScript support
+
+## Installation
+
+```bash
+npx @convex-dev/shadcn add convex/current-user-avatar-nextjs
+```
+
+This installs:
+
+- `CurrentUserAvatar` component
+- Custom hooks for user data
+- Convex backend queries
+
+## Usage
+
+### Basic Example
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+
+export function Header() {
+  return (
+    <header>
+      <CurrentUserAvatar />
+    </header>
+  );
+}
+```
+
+### With Different Sizes
+
+```tsx
+<CurrentUserAvatar size="sm" />  {/* 32x32px */}
+<CurrentUserAvatar size="md" />  {/* 40x40px - default */}
+<CurrentUserAvatar size="lg" />  {/* 48x48px */}
+```
+
+### Custom Styling
+
+```tsx
+<CurrentUserAvatar 
+  size="lg"
+  className="border-2 border-primary"
+/>
+```
+
+### Hide When Not Authenticated
+
+```tsx
+<CurrentUserAvatar showFallback={false} />
+```
+
+This returns `null` if the user is not authenticated and has no image/name.
+
+## Component API
+
+### Props
+
+<ParamField path="size" type="'sm' | 'md' | 'lg'" default="'md'">
+  Size of the avatar:
+  - `sm`: 32x32px (h-8 w-8)
+  - `md`: 40x40px (h-10 w-10)
+  - `lg`: 48x48px (h-12 w-12)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the avatar
+</ParamField>
+
+<ParamField path="showFallback" type="boolean" default="true">
+  Whether to show a fallback ("?") when user is not authenticated. If `false`, returns `null` when not authenticated.
+</ParamField>
+
+## Component Source
+
+The component uses custom hooks to fetch user data:
+
+```tsx title="components/current-user-avatar.tsx"
+"use client";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { useCurrentUserImage } from "../hooks/use-current-user-image";
+import { useCurrentUserName } from "../hooks/use-current-user-name";
+
+interface CurrentUserAvatarProps {
+  size?: "sm" | "md" | "lg";
+  className?: string;
+  showFallback?: boolean;
+}
+
+const sizeClasses = {
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-12 w-12 text-base",
+};
+
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export function CurrentUserAvatar({
+  size = "md",
+  className,
+  showFallback = true,
+}: CurrentUserAvatarProps) {
+  const image = useCurrentUserImage();
+  const name = useCurrentUserName();
+
+  // Loading state
+  if (image === undefined || name === undefined) {
+    return (
+      <Skeleton className={cn("rounded-full", sizeClasses[size], className)} />
+    );
+  }
+
+  // Not authenticated
+  if (!showFallback && !image && !name) {
+    return null;
+  }
+
+  return (
+    <Avatar className={cn(sizeClasses[size], className)}>
+      <AvatarImage src={image ?? undefined} alt={name ?? "User"} />
+      <AvatarFallback>{getInitials(name)}</AvatarFallback>
+    </Avatar>
+  );
+}
+```
+
+## Custom Hooks
+
+### useCurrentUserImage
+
+Fetch the current user's profile image:
+
+```tsx title="hooks/use-current-user-image.ts"
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+export function useCurrentUserImage() {
+  const user = useQuery(api.users.current);
+  return user?.image ?? null;
+}
+```
+
+**Returns:**
+- `undefined` - Loading
+- `string` - User's image URL
+- `null` - No image or not authenticated
+
+### useCurrentUserName
+
+Fetch the current user's name:
+
+```tsx title="hooks/use-current-user-name.ts"
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+export function useCurrentUserName() {
+  const user = useQuery(api.users.current);
+  return user?.name ?? null;
+}
+```
+
+**Returns:**
+- `undefined` - Loading
+- `string` - User's name
+- `null` - No name or not authenticated
+
+## Backend Implementation
+
+The component relies on the `users.current` query:
+
+```typescript title="convex/users.ts"
+import { query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return null;
+    }
+    return await ctx.db.get(userId);
+  },
+});
+```
+
+## Loading States
+
+The component handles three states:
+
+### 1. Loading
+
+Shows a skeleton while fetching user data:
+
+```tsx
+<Skeleton className="h-10 w-10 rounded-full" />
+```
+
+### 2. Authenticated with Image
+
+Displays the user's profile image:
+
+```tsx
+<Avatar>
+  <AvatarImage src={user.image} alt={user.name} />
+  <AvatarFallback>JD</AvatarFallback>
+</Avatar>
+```
+
+### 3. Authenticated without Image
+
+Shows initials as fallback:
+
+```tsx
+<Avatar>
+  <AvatarFallback>JD</AvatarFallback>
+</Avatar>
+```
+
+## Initials Logic
+
+The `getInitials` function extracts up to 2 initials:
+
+```typescript
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+```
+
+**Examples:**
+- "John Doe" → "JD"
+- "Alice" → "AL" (first 2 chars)
+- "" → "?"
+- `null` → "?"
+
+## Common Patterns
+
+### In Navigation Bar
+
+```tsx
+export function Navbar() {
+  return (
+    <nav className="flex items-center justify-between p-4">
+      <Logo />
+      <CurrentUserAvatar size="md" />
+    </nav>
+  );
+}
+```
+
+### With Dropdown Menu
+
+```tsx
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export function UserMenu() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <CurrentUserAvatar />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem>Profile</DropdownMenuItem>
+        <DropdownMenuItem>Settings</DropdownMenuItem>
+        <DropdownMenuItem>Logout</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+```
+
+### In User List
+
+```tsx
+export function UserList({ users }) {
+  return (
+    <div className="space-y-2">
+      {users.map((user) => (
+        <div key={user._id} className="flex items-center gap-3">
+          <CurrentUserAvatar size="sm" />
+          <span>{user.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Styling
+
+The component uses Tailwind CSS and can be customized:
+
+### Size Classes
+
+```typescript
+const sizeClasses = {
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-12 w-12 text-base",
+};
+```
+
+### Custom Borders
+
+```tsx
+<CurrentUserAvatar className="border-2 border-primary ring-2 ring-offset-2" />
+```
+
+### With Hover Effects
+
+```tsx
+<CurrentUserAvatar className="cursor-pointer hover:opacity-80 transition-opacity" />
+```
+
+## Authentication Required
+
+This component requires authentication to be set up. See:
+
+- [Password-Based Auth](/nextjs/password-based-auth)
+- [Social Auth](/nextjs/social-auth)
+
+If auth is not configured, the component will show the fallback ("?") or `null` depending on `showFallback` prop.
+
+## Related
+
+- [Password-Based Authentication](/nextjs/password-based-auth)
+- [Social Authentication](/nextjs/social-auth)
+- [Realtime Avatar Stack](/nextjs/realtime-avatar-stack)

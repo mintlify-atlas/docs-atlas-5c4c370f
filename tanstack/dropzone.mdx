@@ -1,0 +1,728 @@
+---
+title: File Upload Dropzone
+description: Drag-and-drop file upload component powered by Convex storage with validation and progress tracking
+---
+
+## Overview
+
+A production-ready file upload component with drag-and-drop support, file validation, upload progress tracking, and direct integration with Convex storage. Features preview thumbnails, error handling, and support for multiple files.
+
+## Features
+
+- Drag and drop file uploads
+- Click to browse files
+- File type validation
+- File size validation
+- Image previews
+- Upload progress tracking
+- Error handling
+- Multiple file support
+- Success states
+- Remove files before upload
+- Direct Convex storage integration
+
+## Installation
+
+<Steps>
+  <Step title="Install the component">
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/dropzone-tanstack
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    The following will be installed automatically:
+    - `react-dropzone`
+    - `convex@latest`
+    - `@convex-dev/auth@latest`
+    - `@convex-dev/react-query@latest`
+    - `@tanstack/react-query@latest`
+  </Step>
+
+  <Step title="Start Convex">
+    ```bash
+    npx convex dev
+    ```
+  </Step>
+</Steps>
+
+## What Gets Installed
+
+### Components
+
+- `dropzone.tsx` - Main dropzone UI component
+
+### Hooks
+
+- `use-convex-upload.ts` - Upload state management and Convex integration
+
+### Backend (Convex)
+
+- `convex/files.ts` - File storage functions
+- `convex/schema.ts` - Files database schema
+
+## Usage
+
+### Basic Upload
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export function UploadPage() {
+  const upload = useConvexUpload({
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFiles: 5,
+  });
+
+  return (
+    <div className="container max-w-2xl py-8">
+      <h1 className="text-2xl font-bold mb-6">Upload Files</h1>
+      <Dropzone upload={upload} />
+    </div>
+  );
+}
+```
+
+### Image Upload Only
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export function ImageUpload() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: ["image/*"],
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 10,
+  });
+
+  return <Dropzone upload={upload} />;
+}
+```
+
+### Specific File Types
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export function DocumentUpload() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ],
+    maxFileSize: 20 * 1024 * 1024, // 20MB
+    maxFiles: 3,
+  });
+
+  return <Dropzone upload={upload} />;
+}
+```
+
+### Single File Upload
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export function ProfilePictureUpload() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    maxFileSize: 2 * 1024 * 1024, // 2MB
+    maxFiles: 1,
+  });
+
+  return (
+    <div className="max-w-md">
+      <h3 className="font-semibold mb-3">Profile Picture</h3>
+      <Dropzone upload={upload} />
+    </div>
+  );
+}
+```
+
+### With Callback
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+import { useEffect } from "react";
+import { toast } from "sonner";
+
+export function UploadWithCallback() {
+  const upload = useConvexUpload({
+    maxFileSize: 10 * 1024 * 1024,
+    maxFiles: 5,
+  });
+
+  useEffect(() => {
+    if (upload.isSuccess) {
+      toast.success("All files uploaded successfully!");
+      // Do something with uploaded files
+      console.log("Uploaded files:", upload.successes);
+    }
+  }, [upload.isSuccess, upload.successes]);
+
+  return <Dropzone upload={upload} />;
+}
+```
+
+## API Reference
+
+### useConvexUpload Options
+
+```typescript
+interface UseConvexUploadOptions {
+  allowedMimeTypes?: string[];
+  maxFileSize?: number;
+  maxFiles?: number;
+}
+```
+
+<ParamField path="allowedMimeTypes" type="array" default={[]}>
+  Array of allowed MIME types. Supports wildcards (e.g., `"image/*"`).
+  
+  Empty array allows all file types.
+  
+  Examples:
+  - `["image/*"]` - All images
+  - `["image/png", "image/jpeg"]` - Specific image types
+  - `["application/pdf"]` - PDFs only
+  - `["video/*", "audio/*"]` - Videos and audio
+</ParamField>
+
+<ParamField path="maxFileSize" type="number" default="Infinity">
+  Maximum file size in bytes.
+  
+  Examples:
+  - `1024 * 1024` - 1MB
+  - `5 * 1024 * 1024` - 5MB
+  - `50 * 1024 * 1024` - 50MB
+</ParamField>
+
+<ParamField path="maxFiles" type="number" default={1}>
+  Maximum number of files allowed per upload.
+</ParamField>
+
+### useConvexUpload Return Type
+
+```typescript
+interface UseConvexUploadReturn {
+  // State
+  files: FileWithPreview[];
+  loading: boolean;
+  errors: Array<{ name: string; message: string }>;
+  successes: string[];
+  isSuccess: boolean;
+  
+  // Actions
+  setFiles: (files: FileWithPreview[]) => void;
+  onUpload: () => Promise<void>;
+  
+  // Config
+  maxFileSize: number;
+  maxFiles: number;
+  allowedMimeTypes: string[];
+  
+  // react-dropzone props
+  getRootProps: () => any;
+  getInputProps: () => any;
+  isDragActive: boolean;
+  open: () => void;
+}
+```
+
+### Dropzone Props
+
+```typescript
+interface DropzoneProps {
+  upload: UseConvexUploadReturn;
+  className?: string;
+}
+```
+
+<ParamField path="upload" type="UseConvexUploadReturn" required>
+  The upload state object returned from `useConvexUpload()`.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the dropzone container.
+</ParamField>
+
+## Backend Implementation
+
+### File Schema
+
+```typescript convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  files: defineTable({
+    storageId: v.id("_storage"),
+    userId: v.optional(v.id("users")),
+    sessionId: v.optional(v.string()),
+    name: v.string(),
+    type: v.string(),
+    size: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_session", ["sessionId"]),
+});
+```
+
+### Generate Upload URL
+
+```typescript convex/files.ts
+import { mutation } from "./_generated/server";
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+```
+
+This creates a temporary, secure URL for uploading files directly to Convex storage.
+
+### Save File Metadata
+
+```typescript convex/files.ts
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+export const saveFile = mutation({
+  args: {
+    storageId: v.id("_storage"),
+    name: v.string(),
+    type: v.string(),
+    size: v.number(),
+    sessionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Validate file size
+    if (args.size > MAX_FILE_SIZE) {
+      throw new Error(`File too large. Maximum size is 50MB.`);
+    }
+
+    // Sanitize filename
+    const name = args.name.trim().slice(0, 255);
+    if (!name) {
+      throw new Error("Filename cannot be empty.");
+    }
+
+    // Get authenticated user ID (if available)
+    let userId;
+    try {
+      const { getAuthUserId } = await import("@convex-dev/auth/server");
+      userId = await getAuthUserId(ctx);
+    } catch {
+      userId = undefined; // Demo mode
+    }
+
+    return await ctx.db.insert("files", {
+      storageId: args.storageId,
+      userId,
+      sessionId: args.sessionId,
+      name,
+      type: args.type,
+      size: args.size,
+    });
+  },
+});
+```
+
+### List User Files
+
+```typescript convex/files.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+export const list = query({
+  args: { sessionId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    // Get authenticated user ID
+    let userId;
+    try {
+      const { getAuthUserId } = await import("@convex-dev/auth/server");
+      userId = await getAuthUserId(ctx);
+    } catch {
+      userId = null;
+    }
+
+    let files;
+    if (userId) {
+      // Authenticated: show user's files
+      files = await ctx.db
+        .query("files")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+    } else if (args.sessionId) {
+      // Demo mode: show session's files
+      files = await ctx.db
+        .query("files")
+        .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+        .collect();
+    } else {
+      return [];
+    }
+
+    // Add download URLs
+    return await Promise.all(
+      files.map(async (file) => ({
+        ...file,
+        url: await ctx.storage.getUrl(file.storageId),
+      }))
+    );
+  },
+});
+```
+
+## Upload Flow
+
+<Steps>
+  <Step title="User Selects Files">
+    Files are selected via drag-and-drop or file picker
+  </Step>
+
+  <Step title="Client Validation">
+    Files are validated against size and type constraints
+  </Step>
+
+  <Step title="Preview Generation">
+    Image previews are generated for display
+  </Step>
+
+  <Step title="User Clicks Upload">
+    User reviews files and clicks upload button
+  </Step>
+
+  <Step title="Generate Upload URLs">
+    For each file, request a secure upload URL from Convex
+  </Step>
+
+  <Step title="Upload to Storage">
+    Files are uploaded directly to Convex storage via HTTPS
+  </Step>
+
+  <Step title="Save Metadata">
+    File metadata (name, type, size) is saved to database
+  </Step>
+
+  <Step title="Success">
+    Upload complete, files are accessible via storage IDs
+  </Step>
+</Steps>
+
+## Features in Detail
+
+### File Validation
+
+Validation happens at multiple stages:
+
+**Client-side (react-dropzone):**
+```typescript
+// Validates file type and size before accepting
+const dropzoneProps = useDropzone({
+  accept: allowedMimeTypes.reduce(
+    (acc, type) => ({ ...acc, [type]: [] }),
+    {},
+  ),
+  maxSize: maxFileSize,
+  maxFiles: maxFiles,
+});
+```
+
+**Server-side (Convex):**
+```typescript
+// Double-check constraints on server
+if (args.size > MAX_FILE_SIZE) {
+  throw new Error(`File too large`);
+}
+```
+
+### Image Previews
+
+Previews are generated using `URL.createObjectURL`:
+
+```typescript
+const validFiles = acceptedFiles.map((file) => {
+  (file as FileWithPreview).preview = URL.createObjectURL(file);
+  return file as FileWithPreview;
+});
+```
+
+Cleanup happens automatically when files are removed.
+
+### Error Handling
+
+Errors are tracked per-file:
+
+```typescript
+// Validation errors from react-dropzone
+file.errors // FileError[]
+
+// Upload errors from server
+errors // Array<{ name: string; message: string }>
+```
+
+Both are displayed in the UI with clear error messages.
+
+### Progress Tracking
+
+Upload state is tracked globally:
+
+```typescript
+const { loading, isSuccess } = upload;
+
+// Show loading state
+if (loading) return <Spinner />;
+
+// Show success state
+if (isSuccess) return <SuccessMessage />;
+```
+
+## Customization
+
+### Custom Dropzone Style
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export function CustomStyledUpload() {
+  const upload = useConvexUpload();
+
+  return (
+    <Dropzone 
+      upload={upload}
+      className="border-4 border-dashed border-purple-500 rounded-2xl"
+    />
+  );
+}
+```
+
+### Custom Empty State
+
+Modify the dropzone component to change the empty state:
+
+```tsx
+<CardContent className="flex flex-col items-center gap-4 p-16 text-center">
+  <input {...getInputProps()} />
+  <Upload className="h-16 w-16 text-primary" />
+  <div className="space-y-2">
+    <h3 className="text-xl font-bold">Drop your files here</h3>
+    <p className="text-muted-foreground">
+      or click to browse from your computer
+    </p>
+  </div>
+</CardContent>
+```
+
+### Add File Limits Warning
+
+```tsx
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+
+{files.length >= maxFiles && (
+  <Alert>
+    <AlertCircle className="h-4 w-4" />
+    <AlertDescription>
+      Maximum {maxFiles} file{maxFiles !== 1 ? "s" : ""} allowed.
+      Remove files to add more.
+    </AlertDescription>
+  </Alert>
+)}
+```
+
+### Custom File Icons
+
+Modify the `getFileIcon` function:
+
+```typescript
+function getFileIcon(type: string): LucideIcon {
+  if (type.startsWith("image/")) return ImageIcon;
+  if (type.startsWith("video/")) return FileVideoIcon;
+  if (type.startsWith("audio/")) return FileAudioIcon;
+  if (type === "application/pdf") return FileTextIcon;
+  if (type.includes("spreadsheet") || type.includes("excel")) {
+    return FileSpreadsheetIcon;
+  }
+  return FileIcon;
+}
+```
+
+## Examples
+
+### Profile Picture Upload
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+
+export function ProfilePictureUpload() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    maxFileSize: 2 * 1024 * 1024, // 2MB
+    maxFiles: 1,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <Avatar className="h-24 w-24">
+          {upload.files[0]?.preview && (
+            <AvatarImage src={upload.files[0].preview} />
+          )}
+        </Avatar>
+        <div>
+          <h3 className="font-semibold">Profile Picture</h3>
+          <p className="text-sm text-muted-foreground">
+            JPG, PNG, or WebP. Max 2MB.
+          </p>
+        </div>
+      </div>
+      <Dropzone upload={upload} />
+    </div>
+  );
+}
+```
+
+### Document Upload with List
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function DocumentManager() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: ["application/pdf", "application/msword"],
+    maxFileSize: 10 * 1024 * 1024,
+    maxFiles: 10,
+  });
+
+  const { data: files } = useQuery(
+    convexQuery(api.files.list, {})
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Upload Documents</h2>
+        <Dropzone upload={upload} />
+      </div>
+
+      {files && files.length > 0 && (
+        <div>
+          <h3 className="text-xl font-semibold mb-3">Your Documents</h3>
+          <div className="space-y-2">
+            {files.map((file) => (
+              <div
+                key={file._id}
+                className="flex items-center justify-between p-3 border rounded"
+              >
+                <div>
+                  <p className="font-medium">{file.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+                <a
+                  href={file.url ?? "#"}
+                  download={file.name}
+                  className="text-primary hover:underline"
+                >
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Security
+
+### Upload URL Expiration
+
+Upload URLs are temporary and expire after a short time:
+
+```typescript
+const uploadUrl = await generateUploadUrl();
+// URL expires after ~1 hour
+```
+
+### Server-Side Validation
+
+Always validate on the server:
+
+```typescript
+// Check file size
+if (args.size > MAX_FILE_SIZE) {
+  throw new Error("File too large");
+}
+
+// Sanitize filename
+const name = args.name.trim().slice(0, 255);
+```
+
+### User Ownership
+
+Files are associated with users:
+
+```typescript
+// Authenticated users
+if (userId) {
+  files = await ctx.db
+    .query("files")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Files not uploading">
+    - Check that Convex is running (`npx convex dev`)
+    - Verify environment variables are set
+    - Check browser console for errors
+    - Ensure file size is within limits
+  </Accordion>
+
+  <Accordion title="Preview not showing">
+    - Previews only work for image files
+    - Check that the file type is `image/*`
+    - Verify `URL.createObjectURL` is supported in your browser
+  </Accordion>
+
+  <Accordion title="File validation not working">
+    - Ensure MIME types are correctly specified
+    - Check that `maxFileSize` is in bytes (not MB)
+    - Verify `maxFiles` is set correctly
+  </Accordion>
+
+  <Accordion title="Cannot read properties of undefined">
+    - Ensure you're passing the `upload` object from `useConvexUpload()` to `<Dropzone>`
+    - Check that all required props are provided
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [Realtime Chat](/tanstack/realtime-chat) - Share uploaded files in chat
+- [Current User Avatar](/tanstack/current-user-avatar) - Upload profile pictures

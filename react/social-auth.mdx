@@ -1,0 +1,408 @@
+---
+title: Social Authentication
+description: OAuth authentication with GitHub and Google for React applications
+---
+
+Social authentication (OAuth) for React with Convex Auth. Enable users to sign in with GitHub or Google with a single click.
+
+## Installation
+
+```bash
+npx shadcn@latest add https://convex-ui.vercel.app/r/social-auth-react
+```
+
+This installs:
+- Social login form with GitHub and Google
+- Convex auth configuration for OAuth
+- User management backend
+- Convex client setup
+
+## What's Included
+
+<CardGroup cols={2}>
+
+<Card title="GitHub Sign-In" icon="github">
+  One-click GitHub OAuth authentication
+</Card>
+
+<Card title="Google Sign-In" icon="google">
+  One-click Google OAuth authentication
+</Card>
+
+<Card title="User Management" icon="users">
+  Automatic user profile creation and management
+</Card>
+
+<Card title="Full Backend" icon="server">
+  Complete Convex auth setup with OAuth providers
+</Card>
+
+</CardGroup>
+
+## Setup
+
+<Steps>
+
+### Configure OAuth Providers
+
+Set up OAuth credentials in each provider's dashboard:
+
+<Tabs>
+  <Tab title="GitHub">
+    1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+    2. Create a new OAuth App
+    3. Set callback URL: `https://your-deployment.convex.cloud/api/auth/callback/github`
+    4. Copy Client ID and Client Secret
+  </Tab>
+  
+  <Tab title="Google">
+    1. Go to [Google Cloud Console](https://console.cloud.google.com)
+    2. Create a new project or select existing
+    3. Enable Google+ API
+    4. Create OAuth 2.0 credentials
+    5. Add authorized redirect URI: `https://your-deployment.convex.cloud/api/auth/callback/google`
+    6. Copy Client ID and Client Secret
+  </Tab>
+</Tabs>
+
+### Set Environment Variables
+
+Add credentials to Convex dashboard (Settings > Environment Variables):
+
+```bash Convex Dashboard
+AUTH_GITHUB_ID=Iv1.your_github_id
+AUTH_GITHUB_SECRET=your_github_secret
+AUTH_GOOGLE_ID=your_google_id.apps.googleusercontent.com
+AUTH_GOOGLE_SECRET=your_google_secret
+```
+
+<Warning>
+  At least one OAuth provider must be configured for authentication to work.
+</Warning>
+
+### Start Convex Dev Server
+
+```bash
+npx convex dev
+```
+
+### Add to Your App
+
+Set `VITE_CONVEX_URL` in your `.env` file:
+
+```bash .env
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
+CONVEX_DEPLOYMENT=your-deployment-name
+```
+
+</Steps>
+
+## Component
+
+### SocialLoginForm
+
+A card-based form with social sign-in buttons.
+
+```tsx
+import { SocialLoginForm } from "@/components/login-form";
+
+function LoginPage() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <SocialLoginForm providers={['github', 'google']} />
+    </div>
+  );
+}
+```
+
+#### Props
+
+<ParamField path="providers" type="('github' | 'google')[]" default={['github', 'google']}>
+  Array of OAuth providers to display. Defaults to both GitHub and Google.
+</ParamField>
+
+## Usage Examples
+
+<CodeGroup>
+
+```tsx GitHub Only
+import { SocialLoginForm } from '@/components/login-form';
+
+function GitHubLogin() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <SocialLoginForm providers={['github']} />
+    </div>
+  );
+}
+```
+
+```tsx Custom Layout
+import { SocialLoginForm } from '@/components/login-form';
+
+function AuthPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container max-w-md mx-auto pt-20">
+        <h1 className="text-3xl font-bold text-center mb-8">
+          Welcome Back
+        </h1>
+        <SocialLoginForm />
+      </div>
+    </div>
+  );
+}
+```
+
+```tsx With Auth Check
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { SocialLoginForm } from '@/components/login-form';
+import { Navigate } from 'react-router-dom';
+
+function LoginPage() {
+  const user = useQuery(api.users.current);
+  
+  // Still loading
+  if (user === undefined) {
+    return <div>Loading...</div>;
+  }
+  
+  // Already authenticated
+  if (user !== null) {
+    return <Navigate to="/dashboard" />;
+  }
+  
+  // Show login
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <SocialLoginForm />
+    </div>
+  );
+}
+```
+
+</CodeGroup>
+
+## Authentication Flow
+
+<Steps>
+
+### User Clicks Sign-In Button
+
+Clicking a provider button calls `signIn(provider)` which redirects to the OAuth provider.
+
+### OAuth Authorization
+
+The user authorizes your app on GitHub or Google.
+
+### Callback to Convex
+
+The provider redirects back to your Convex deployment with an authorization code.
+
+### User Created/Updated
+
+Convex Auth automatically creates or updates the user profile with information from the OAuth provider.
+
+### Redirect to App
+
+The user is redirected back to your application, now authenticated.
+
+</Steps>
+
+## Backend Functions
+
+### User Queries
+
+**Get current user:**
+
+```tsx
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+
+const user = useQuery(api.users.current);
+// Returns: { _id, name, email, image } | null
+```
+
+**Get user by ID:**
+
+```tsx
+const publicProfile = useQuery(api.users.get, { 
+  userId: "j97..." 
+});
+// Returns: { _id, name, image } | null
+```
+
+### User Mutations
+
+**Update profile:**
+
+```tsx
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+
+const updateProfile = useMutation(api.users.updateProfile);
+
+await updateProfile({ 
+  name: "Jane Doe",
+  image: "https://example.com/avatar.jpg" 
+});
+```
+
+## Sign Out
+
+Use the `useAuthActions` hook to sign out:
+
+```tsx
+import { useAuthActions } from "@convex-dev/auth/react";
+
+function SignOutButton() {
+  const { signOut } = useAuthActions();
+  
+  return (
+    <button onClick={() => signOut()}>
+      Sign Out
+    </button>
+  );
+}
+```
+
+## Component Source
+
+The login form component uses Convex Auth's `useAuthActions` hook:
+
+```tsx components/login-form.tsx
+"use client";
+
+import { useAuthActions } from "@convex-dev/auth/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+
+type Provider = "github" | "google";
+
+interface SocialLoginFormProps {
+  providers?: Provider[];
+}
+
+export function SocialLoginForm({
+  providers = ["github", "google"],
+}: SocialLoginFormProps) {
+  const { signIn } = useAuthActions();
+  const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
+
+  const handleSocialLogin = async (provider: Provider) => {
+    setLoadingProvider(provider);
+    try {
+      await signIn(provider);
+    } catch (err) {
+      setLoadingProvider(null);
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Welcome</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {providers.map((provider) => (
+          <Button
+            key={provider}
+            onClick={() => handleSocialLogin(provider)}
+            disabled={loadingProvider !== null}
+          >
+            Continue with {provider}
+          </Button>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+## Environment Variables
+
+### Required (Your App)
+
+<ParamField path="VITE_CONVEX_URL" type="string" required>
+  Your Convex deployment URL from `npx convex dev`
+</ParamField>
+
+<ParamField path="CONVEX_DEPLOYMENT" type="string" required>
+  Your Convex deployment name
+</ParamField>
+
+### Required (Convex Dashboard)
+
+At least one OAuth provider must be configured:
+
+<ParamField path="AUTH_GITHUB_ID" type="string">
+  GitHub OAuth Client ID
+</ParamField>
+
+<ParamField path="AUTH_GITHUB_SECRET" type="string">
+  GitHub OAuth Client Secret
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_ID" type="string">
+  Google OAuth Client ID
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_SECRET" type="string">
+  Google OAuth Client Secret
+</ParamField>
+
+## Customization
+
+The social login form uses shadcn/ui components:
+
+```tsx
+// Customize button appearance
+<Button 
+  variant="outline"
+  size="lg"
+  className="w-full"
+>
+  <GitHubIcon className="mr-2" />
+  Continue with GitHub
+</Button>
+```
+
+Modify the component in your `components/` directory to customize icons, layout, or styling.
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="OAuth redirect error">
+  Verify your callback URLs in GitHub/Google match your Convex deployment URL exactly. The URL should be `https://your-deployment.convex.cloud/api/auth/callback/[provider]`.
+</Accordion>
+
+<Accordion title="No providers configured error">
+  Ensure you've added `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET` (or Google equivalents) to your Convex dashboard environment variables. At least one provider must be configured.
+</Accordion>
+
+<Accordion title="Button stays in loading state">
+  Check browser console for errors. This usually indicates an OAuth configuration issue or network error during the redirect.
+</Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Current User Avatar" href="/react/current-user-avatar">
+  Display the authenticated user's avatar
+</Card>
+
+<Card title="Password Auth" href="/react/password-based-auth">
+  Add email/password authentication
+</Card>
+
+<Card title="Realtime Chat" href="/react/realtime-chat">
+  Build authenticated chat rooms
+</Card>
+
+</CardGroup>

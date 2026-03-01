@@ -1,0 +1,281 @@
+---
+title: Convex Client Setup
+description: Set up Convex with React Query for TanStack Start with authentication support
+---
+
+## Overview
+
+The Convex client for TanStack Start integrates Convex with React Query and provides full authentication support through `@convex-dev/auth`. This setup enables server-side rendering, automatic query invalidation, and seamless authentication flows.
+
+## Features
+
+- React Query integration via `@convex-dev/react-query`
+- Server-side rendering support
+- Automatic authentication with Convex Auth
+- Type-safe queries and mutations
+- Optimistic updates and caching
+
+## Installation
+
+<Steps>
+  <Step title="Install the client setup">
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/convex-client-tanstack
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    The following packages will be installed automatically:
+    - `convex@latest`
+    - `@convex-dev/auth@latest`
+    - `@convex-dev/react-query@latest`
+    - `@tanstack/react-query@latest`
+  </Step>
+
+  <Step title="Initialize Convex">
+    If you haven't already, initialize Convex in your project:
+    ```bash
+    npx convex dev
+    ```
+  </Step>
+</Steps>
+
+## Configuration
+
+### Environment Variables
+
+Add these variables to your `.env` file:
+
+<ParamField path="CONVEX_DEPLOYMENT" type="string" required>
+  Your Convex deployment name (automatically set by `npx convex dev`)
+</ParamField>
+
+<ParamField path="VITE_CONVEX_URL" type="string" required>
+  Your Convex deployment URL (e.g., `https://your-project.convex.cloud`)
+</ParamField>
+
+### File Structure
+
+The installation creates three files:
+
+#### `lib/convex/client.ts`
+
+Creates a Convex React client instance:
+
+```typescript
+import { ConvexReactClient } from "convex/react";
+
+const convexUrl = (import.meta as any).env.VITE_CONVEX_URL as string;
+
+export const convex = new ConvexReactClient(convexUrl);
+```
+
+#### `lib/convex/provider.tsx`
+
+Provides the Convex client with authentication to your app:
+
+```typescript
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { ConvexReactClient } from "convex/react";
+import { ReactNode } from "react";
+
+const convex = new ConvexReactClient(
+  (import.meta as any).env.VITE_CONVEX_URL as string,
+);
+
+export function ConvexClientProvider({ children }: { children: ReactNode }) {
+  return <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>;
+}
+```
+
+#### `lib/convex/server.ts`
+
+Exports React Query integration utilities:
+
+```typescript
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { api } from "@/convex/_generated/api";
+
+export { convexQuery, useConvexMutation, api };
+```
+
+## Usage
+
+### Wrap Your App
+
+Wrap your root component with the `ConvexClientProvider`:
+
+```tsx routes/__root.tsx
+import { ConvexClientProvider } from "@/lib/convex/provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+
+export function Root() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ConvexClientProvider>
+        <Outlet />
+      </ConvexClientProvider>
+    </QueryClientProvider>
+  );
+}
+```
+
+### Using Queries
+
+Use `useQuery` with `convexQuery` for server-rendered queries:
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function MyComponent() {
+  const { data, isLoading } = useQuery(
+    convexQuery(api.messages.list, { roomId: "general" })
+  );
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {data?.map((message) => (
+        <div key={message._id}>{message.content}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Using Mutations
+
+Use `useConvexMutation` for write operations:
+
+```tsx
+import { useConvexMutation, api } from "@/lib/convex/server";
+
+export function SendMessageForm() {
+  const { mutate, isPending } = useConvexMutation(api.messages.send);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    mutate({
+      roomId: "general",
+      content: formData.get("message") as string,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="message" disabled={isPending} />
+      <button type="submit" disabled={isPending}>
+        Send
+      </button>
+    </form>
+  );
+}
+```
+
+### Client-Side Only Queries
+
+For queries that should only run on the client, use the standard Convex hooks:
+
+```tsx
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+export function ClientComponent() {
+  const data = useQuery(api.myQuery.list);
+  
+  return <div>{data?.length} items</div>;
+}
+```
+
+## Authentication
+
+The provider automatically handles authentication. Access auth state using Convex Auth hooks:
+
+```tsx
+import { useAuthActions } from "@convex-dev/auth/react";
+import { Authenticated, Unauthenticated } from "convex/react";
+
+export function AuthStatus() {
+  const { signOut } = useAuthActions();
+
+  return (
+    <>
+      <Authenticated>
+        <button onClick={() => signOut()}>Sign Out</button>
+      </Authenticated>
+      <Unauthenticated>
+        <a href="/auth/login">Sign In</a>
+      </Unauthenticated>
+    </>
+  );
+}
+```
+
+## Server-Side Rendering
+
+For server-rendered pages, prefetch queries in loaders:
+
+```tsx routes/messages.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export const Route = createFileRoute("/messages")(
+  loader: async ({ context }) => {
+    await context.queryClient.prefetchQuery(
+      convexQuery(api.messages.list, { roomId: "general" })
+    );
+  },
+  component: MessagesPage,
+});
+
+function MessagesPage() {
+  const { data } = useQuery(
+    convexQuery(api.messages.list, { roomId: "general" })
+  );
+  
+  return <div>{/* render messages */}</div>;
+}
+```
+
+## TypeScript
+
+All queries and mutations are fully type-safe when using the generated API:
+
+```typescript
+import { api } from "@/convex/_generated/api";
+
+// TypeScript knows the exact shape of arguments and return types
+const { data } = useQuery(
+  convexQuery(api.messages.list, {
+    roomId: "general", // ✓ Type-checked
+    // invalid: "prop", // ✗ TypeScript error
+  })
+);
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Environment variables not found">
+    Make sure `VITE_CONVEX_URL` is set in your `.env` file and that you've restarted your dev server.
+  </Accordion>
+
+  <Accordion title="Provider must wrap the app">
+    Ensure `ConvexClientProvider` wraps your entire app and is inside `QueryClientProvider`.
+  </Accordion>
+
+  <Accordion title="Generated API types not found">
+    Run `npx convex dev` to generate TypeScript types from your schema.
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+- [TanStack Start Documentation](https://tanstack.com/router/latest/docs/framework/react/start/overview)
+- [Convex React Query Integration](https://docs.convex.dev/client/react/react-query)
+- [Convex Auth Documentation](https://docs.convex.dev/auth)

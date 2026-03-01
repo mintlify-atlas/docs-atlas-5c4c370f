@@ -1,0 +1,244 @@
+---
+title: "Convex Client Setup"
+description: "Set up Convex client and provider for Next.js applications with authentication support"
+---
+
+## Overview
+
+The Convex client setup provides the foundation for using Convex in your Next.js application. It includes:
+
+- Convex React client initialization
+- Authentication-aware provider component
+- Server-side utilities for Next.js App Router
+
+## Installation
+
+The client setup is automatically included when you install any Next.js component from the registry:
+
+```bash
+npx @convex-dev/shadcn add convex/password-based-auth-nextjs
+```
+
+This installs three core files:
+
+- `lib/convex/client.ts` - Client-side Convex instance
+- `lib/convex/provider.tsx` - Provider component with auth
+- `lib/convex/server.ts` - Server-side utilities
+
+## Client Configuration
+
+### Basic Client Instance
+
+The client is initialized with your Convex deployment URL:
+
+```tsx title="lib/convex/client.ts"
+"use client";
+
+import { ConvexReactClient } from "convex/react";
+
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
+
+export const convex = new ConvexReactClient(convexUrl);
+```
+
+### Provider Component
+
+Wrap your application with `ConvexClientProvider` to enable Convex functionality:
+
+```tsx title="lib/convex/provider.tsx"
+"use client";
+
+import { ConvexAuthNextjsProvider } from "@convex-dev/auth/nextjs";
+import { ConvexReactClient } from "convex/react";
+import { ReactNode } from "react";
+
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+export function ConvexClientProvider({ children }: { children: ReactNode }) {
+  return (
+    <ConvexAuthNextjsProvider client={convex}>
+      {children}
+    </ConvexAuthNextjsProvider>
+  );
+}
+```
+
+### Server-Side Utilities
+
+For server components and API routes:
+
+```tsx title="lib/convex/server.ts"
+import {
+  fetchAction,
+  fetchMutation,
+  fetchQuery,
+  preloadQuery,
+} from "convex/nextjs";
+
+import { api } from "@/convex/_generated/api";
+
+export { fetchQuery, fetchMutation, fetchAction, preloadQuery, api };
+```
+
+## Setup
+
+<Steps>
+
+<Step title="Add Provider to Root Layout">
+
+Wrap your application with the `ConvexClientProvider` in your root layout:
+
+```tsx title="app/layout.tsx"
+import { ConvexClientProvider } from "@/lib/convex/provider";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <ConvexClientProvider>
+          {children}
+        </ConvexClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+</Step>
+
+<Step title="Configure Environment Variables">
+
+Add your Convex deployment URL to `.env.local`:
+
+```bash title=".env.local"
+NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
+CONVEX_DEPLOYMENT=your-deployment-name
+```
+
+Get these values by running:
+
+```bash
+npx convex dev
+```
+
+</Step>
+
+<Step title="Start Using Convex">
+
+You can now use Convex hooks in your client components:
+
+```tsx
+"use client";
+
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+export function MyComponent() {
+  const data = useQuery(api.myModule.myQuery);
+  const mutate = useMutation(api.myModule.myMutation);
+  
+  // Your component logic
+}
+```
+
+</Step>
+
+</Steps>
+
+## Server-Side Usage
+
+### In Server Components
+
+Use `fetchQuery` to load data in server components:
+
+```tsx title="app/page.tsx"
+import { fetchQuery } from "@/lib/convex/server";
+import { api } from "@/convex/_generated/api";
+
+export default async function Page() {
+  const data = await fetchQuery(api.myModule.myQuery);
+  
+  return <div>{/* Render data */}</div>;
+}
+```
+
+### In API Routes
+
+Use mutations and actions in API routes:
+
+```tsx title="app/api/action/route.ts"
+import { fetchMutation } from "@/lib/convex/server";
+import { api } from "@/convex/_generated/api";
+
+export async function POST(request: Request) {
+  const data = await request.json();
+  
+  await fetchMutation(api.myModule.myMutation, data);
+  
+  return Response.json({ success: true });
+}
+```
+
+### Preloading Queries
+
+Optimize performance by preloading queries:
+
+```tsx title="app/page.tsx"
+import { preloadQuery } from "@/lib/convex/server";
+import { api } from "@/convex/_generated/api";
+
+export default async function Page() {
+  const preloadedData = await preloadQuery(api.myModule.myQuery);
+  
+  return <ClientComponent preloadedData={preloadedData} />;
+}
+```
+
+## Environment Variables
+
+<ParamField path="NEXT_PUBLIC_CONVEX_URL" type="string" required>
+  Your Convex deployment URL. This is a public variable that's exposed to the browser.
+  
+  Example: `https://happy-animal-123.convex.cloud`
+</ParamField>
+
+<ParamField path="CONVEX_DEPLOYMENT" type="string" required>
+  Your Convex deployment name for server-side operations.
+  
+  Example: `happy-animal-123`
+</ParamField>
+
+## TypeScript Support
+
+The Convex client provides full TypeScript support. Generated types are automatically created when you run:
+
+```bash
+npx convex dev
+```
+
+Types are generated in `convex/_generated/` and provide:
+
+- Type-safe API calls
+- Autocomplete for queries, mutations, and actions
+- Compile-time validation of arguments
+
+## Authentication Integration
+
+The `ConvexAuthNextjsProvider` integrates with Convex Auth, providing:
+
+- Automatic token management
+- Session persistence
+- Auth state synchronization
+- Secure credential storage
+
+See the [Password-Based Auth](/nextjs/password-based-auth) or [Social Auth](/nextjs/social-auth) pages for authentication setup.
+
+## Related
+
+- [Password-Based Authentication](/nextjs/password-based-auth)
+- [Social Authentication](/nextjs/social-auth)
+- [Convex Documentation](https://docs.convex.dev)

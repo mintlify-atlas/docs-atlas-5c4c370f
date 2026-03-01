@@ -1,0 +1,465 @@
+---
+title: "Realtime Chat"
+description: "Build realtime chat applications with Convex live queries and instant message synchronization"
+---
+
+## Overview
+
+A complete realtime chat component powered by Convex live queries. Features include:
+
+- Instant message synchronization across all clients
+- Room-based chat organization
+- Auto-scrolling with user control
+- Connection status indicators
+- Demo mode support (no auth required)
+- Full type safety
+
+## Installation
+
+```bash
+npx @convex-dev/shadcn add convex/realtime-chat-nextjs
+```
+
+This installs:
+
+- `RealtimeChat` component
+- `ChatMessage` display component
+- Custom hooks for chat functionality
+- Complete Convex backend
+
+## Usage
+
+### Basic Example
+
+```tsx
+import { RealtimeChat } from "@/components/realtime-chat";
+
+export default function ChatPage() {
+  return (
+    <div className="h-screen p-4">
+      <RealtimeChat 
+        roomName="general"
+        username="Alice"
+      />
+    </div>
+  );
+}
+```
+
+### With Custom Styling
+
+```tsx
+<RealtimeChat
+  roomName="support"
+  username="John Doe"
+  className="max-w-2xl mx-auto shadow-lg"
+/>
+```
+
+### Multiple Chat Rooms
+
+```tsx
+"use client";
+
+import { RealtimeChat } from "@/components/realtime-chat";
+import { useState } from "react";
+
+export default function MultiRoomChat() {
+  const [activeRoom, setActiveRoom] = useState("general");
+  
+  return (
+    <div className="flex h-screen">
+      <aside className="w-64 border-r">
+        <button onClick={() => setActiveRoom("general")}>General</button>
+        <button onClick={() => setActiveRoom("random")}>Random</button>
+        <button onClick={() => setActiveRoom("help")}>Help</button>
+      </aside>
+      
+      <main className="flex-1">
+        <RealtimeChat
+          roomName={activeRoom}
+          username="User123"
+        />
+      </main>
+    </div>
+  );
+}
+```
+
+## Component API
+
+### Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the chat room. Messages are scoped to rooms.
+  
+  Max length: 100 characters
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name for the current user. Used to identify message authors.
+  
+  Max length: 50 characters (automatically trimmed)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the chat container
+</ParamField>
+
+## Component Structure
+
+The chat component is composed of:
+
+```tsx title="components/realtime-chat.tsx"
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Send } from "lucide-react";
+import { useChatScroll } from "../hooks/use-chat-scroll";
+import { useRealtimeChat } from "../hooks/use-realtime-chat";
+import { ChatMessage } from "./chat-message";
+
+interface RealtimeChatProps {
+  roomName: string;
+  username: string;
+  className?: string;
+}
+
+export function RealtimeChat({
+  roomName,
+  username,
+  className,
+}: RealtimeChatProps) {
+  const [inputValue, setInputValue] = useState("");
+  const { messages, sendMessage, isConnected } = useRealtimeChat({
+    roomName,
+    username,
+  });
+  const { containerRef, scrollToBottom, handleScroll, shouldAutoScroll } =
+    useChatScroll();
+
+  useEffect(() => {
+    if (shouldAutoScroll()) {
+      scrollToBottom();
+    }
+  }, [messages, scrollToBottom, shouldAutoScroll]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+
+    await sendMessage(inputValue.trim());
+    setInputValue("");
+  };
+
+  return (
+    <Card className={`flex flex-col h-full ${className ?? ""}`}>
+      <CardHeader className="flex flex-row justify-between items-center">
+        <CardTitle>{roomName}</CardTitle>
+        <Badge variant={isConnected ? "default" : "destructive"}>
+          {isConnected ? "Connected" : "Disconnected"}
+        </Badge>
+      </CardHeader>
+
+      <CardContent
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="overflow-y-auto flex-1 space-y-4"
+      >
+        {messages.map((message) => (
+          <ChatMessage
+            key={message.id}
+            message={message}
+            isOwnMessage={message.user.name === username}
+          />
+        ))}
+      </CardContent>
+
+      <CardFooter>
+        <form onSubmit={handleSubmit} className="w-full flex gap-2">
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Type a message..."
+            disabled={!isConnected}
+          />
+          <Button type="submit" disabled={!isConnected || !inputValue.trim()}>
+            <Send className="w-4 h-4" />
+          </Button>
+        </form>
+      </CardFooter>
+    </Card>
+  );
+}
+```
+
+## Custom Hooks
+
+### useRealtimeChat
+
+Manages chat state and message operations:
+
+```tsx title="hooks/use-realtime-chat.tsx"
+"use client";
+
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useCallback, useEffect, useState } from "react";
+
+interface UseRealtimeChatProps {
+  roomName: string;
+  username: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  content: string;
+  user: {
+    name: string;
+  };
+  createdAt: string;
+}
+
+export function useRealtimeChat({ roomName, username }: UseRealtimeChatProps) {
+  const [sessionId, setSessionId] = useState("");
+  const rawMessages = useQuery(api.messages.list, { roomId: roomName });
+  const sendMutation = useMutation(api.messages.send);
+
+  useEffect(() => {
+    // Get or create session ID for demo mode
+    setSessionId(getSessionId());
+  }, []);
+
+  const messages: ChatMessage[] = (rawMessages ?? []).map((msg: any) => ({
+    id: msg._id,
+    content: msg.content,
+    user: {
+      name: msg.userName,
+    },
+    createdAt: new Date(msg._creationTime).toISOString(),
+  }));
+
+  const sendMessage = useCallback(
+    async (content: string) => {
+      await sendMutation({
+        roomId: roomName,
+        content,
+        userName: username,
+        sessionId,
+      });
+    },
+    [sendMutation, roomName, username, sessionId],
+  );
+
+  const isConnected = rawMessages !== undefined;
+
+  return { messages, sendMessage, isConnected };
+}
+```
+
+### useChatScroll
+
+Handles auto-scrolling behavior:
+
+```tsx title="hooks/use-chat-scroll.tsx"
+"use client";
+
+import { useRef, useCallback } from "react";
+
+export function useChatScroll() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isUserScrollingRef = useRef(false);
+
+  const scrollToBottom = useCallback(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, []);
+
+  const shouldAutoScroll = useCallback(() => {
+    if (!containerRef.current) return true;
+    
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    
+    return isNearBottom || !isUserScrollingRef.current;
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 10;
+    
+    isUserScrollingRef.current = !isAtBottom;
+  }, []);
+
+  return { containerRef, scrollToBottom, handleScroll, shouldAutoScroll };
+}
+```
+
+## Backend Implementation
+
+### Message Schema
+
+```typescript title="convex/schema.ts"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  messages: defineTable({
+    roomId: v.string(),
+    userId: v.optional(v.id("users")),
+    content: v.string(),
+    userName: v.string(),
+    sessionId: v.optional(v.string()),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_user", ["userId"]),
+});
+```
+
+### Message Functions
+
+```typescript title="convex/messages.ts"
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_ROOM_ID_LENGTH = 100;
+
+// List messages in a room
+export const list = query({
+  args: { roomId: v.string() },
+  handler: async (ctx, args) => {
+    if (!args.roomId || args.roomId.length > MAX_ROOM_ID_LENGTH) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .order("asc")
+      .collect();
+  },
+});
+
+// Send a message
+export const send = mutation({
+  args: {
+    roomId: v.string(),
+    content: v.string(),
+    userName: v.string(),
+    sessionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const content = args.content.trim();
+    if (!content || content.length > MAX_MESSAGE_LENGTH) {
+      throw new Error("Invalid message content");
+    }
+
+    const userName = args.userName.trim().slice(0, 50) || "Anonymous";
+
+    return await ctx.db.insert("messages", {
+      roomId: args.roomId,
+      content,
+      userName,
+      sessionId: args.sessionId,
+    });
+  },
+});
+```
+
+## Features
+
+### Realtime Updates
+
+Messages sync instantly across all connected clients using Convex live queries. No polling or manual refresh needed.
+
+### Connection Status
+
+The component displays connection status:
+
+- **Connected** (green badge) - Ready to send/receive messages
+- **Disconnected** (red badge) - Reconnecting or offline
+
+### Message Limits
+
+- Maximum message length: 2000 characters
+- Maximum room ID length: 100 characters
+- Maximum username length: 50 characters (auto-trimmed)
+
+### Auto-Scrolling
+
+Intelligent auto-scroll behavior:
+
+- Automatically scrolls to new messages when at bottom
+- Preserves scroll position when viewing history
+- Returns to auto-scroll when scrolling to bottom
+
+### Demo Mode
+
+Works without authentication using session IDs. Perfect for:
+
+- Public chat rooms
+- Anonymous discussions
+- Quick prototyping
+
+## Styling
+
+The component uses shadcn/ui components and is fully customizable:
+
+```tsx
+<RealtimeChat
+  roomName="custom"
+  username="User"
+  className="h-[600px] max-w-4xl mx-auto border-0 shadow-2xl"
+/>
+```
+
+## Common Patterns
+
+### With Authentication
+
+```tsx
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { RealtimeChat } from "@/components/realtime-chat";
+
+export default function AuthenticatedChat() {
+  const user = useQuery(api.users.current);
+  
+  if (!user) return <div>Please log in</div>;
+  
+  return (
+    <RealtimeChat
+      roomName="members-only"
+      username={user.name ?? "Anonymous"}
+    />
+  );
+}
+```
+
+### Full-Screen Chat
+
+```tsx
+<div className="fixed inset-0 p-4">
+  <RealtimeChat
+    roomName="lobby"
+    username="Player1"
+    className="h-full"
+  />
+</div>
+```
+
+## Related
+
+- [Client Setup](/nextjs/client)
+- [Current User Avatar](/nextjs/current-user-avatar)
+- [Realtime Cursors](/nextjs/realtime-cursor)

@@ -1,0 +1,178 @@
+---
+title: User Components
+description: API reference for user-related components including current user avatar
+---
+
+## CurrentUserAvatar
+
+A component that displays the current authenticated user's avatar with automatic loading and fallback states.
+
+### Props
+
+<ParamField path="size" type="'sm' | 'md' | 'lg'" default="md">
+  Size of the avatar
+  - `sm`: 8x8 (32px) with text-xs
+  - `md`: 10x10 (40px) with text-sm
+  - `lg`: 12x12 (48px) with text-base
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the avatar
+</ParamField>
+
+<ParamField path="showFallback" type="boolean" default="true">
+  Whether to show a fallback avatar when user is not authenticated. If `false`, renders `null` when not authenticated.
+</ParamField>
+
+### Hooks Used
+
+The component uses two custom hooks to fetch user data:
+
+#### useCurrentUserImage
+
+Fetches the current user's avatar image URL.
+
+**Returns:**
+- `string | null` - The user's image URL, or `null` if not set
+- `undefined` - While loading
+
+**Source:**
+```typescript
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+export function useCurrentUserImage() {
+  const user = useQuery(api.users.current);
+  return user?.image ?? null;
+}
+```
+
+#### useCurrentUserName
+
+Fetches the current user's display name.
+
+**Returns:**
+- `string | null` - The user's name, or `null` if not set
+- `undefined` - While loading
+
+**Source:**
+```typescript
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+export function useCurrentUserName() {
+  const user = useQuery(api.users.current);
+  return user?.name ?? null;
+}
+```
+
+### States
+
+#### Loading State
+When `image === undefined` or `name === undefined`, displays a skeleton loader.
+
+#### Not Authenticated State
+- If `showFallback === false` and user is not authenticated: renders `null`
+- If `showFallback === true` and user is not authenticated: renders avatar with "?" fallback
+
+#### Authenticated State
+Displays user's avatar image or initials fallback.
+
+### Initials Generation
+
+The component generates initials from the user's name:
+- Takes the first letter of each word
+- Converts to uppercase
+- Limits to 2 characters
+- Falls back to "?" if name is null
+
+**Examples:**
+- "John Doe" → "JD"
+- "Alice" → "A"
+- null → "?"
+
+### Example
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+
+export default function Header() {
+  return (
+    <div className="flex items-center gap-4">
+      {/* Default size (md) */}
+      <CurrentUserAvatar />
+      
+      {/* Small avatar */}
+      <CurrentUserAvatar size="sm" />
+      
+      {/* Large avatar */}
+      <CurrentUserAvatar size="lg" />
+      
+      {/* Custom styling */}
+      <CurrentUserAvatar 
+        size="md" 
+        className="border-2 border-primary"
+      />
+      
+      {/* Hide when not authenticated */}
+      <CurrentUserAvatar showFallback={false} />
+    </div>
+  );
+}
+```
+
+### Direct Hook Usage
+
+```tsx
+import { useCurrentUserImage } from "@/hooks/use-current-user-image";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+
+export default function CustomUserDisplay() {
+  const image = useCurrentUserImage();
+  const name = useCurrentUserName();
+
+  if (image === undefined || name === undefined) {
+    return <div>Loading...</div>;
+  }
+
+  if (!image && !name) {
+    return <div>Not authenticated</div>;
+  }
+
+  return (
+    <div>
+      {image && <img src={image} alt={name ?? "User"} />}
+      <p>Welcome, {name ?? "Guest"}!</p>
+    </div>
+  );
+}
+```
+
+### Integration with Authentication
+
+This component requires:
+1. Convex Auth setup with user authentication
+2. A `users.current` query in your Convex backend that returns the current user
+3. User schema with `name` and `image` fields
+
+**Example Convex query:**
+```typescript
+import { query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    return await ctx.db.get(userId);
+  },
+});
+```
+
+### Styling
+
+The component uses Tailwind CSS classes and relies on:
+- `Avatar`, `AvatarImage`, `AvatarFallback` from `@/components/ui/avatar`
+- `Skeleton` from `@/components/ui/skeleton`
+- `cn` utility from `@/lib/utils` for class merging

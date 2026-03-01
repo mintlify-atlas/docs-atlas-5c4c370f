@@ -1,0 +1,183 @@
+---
+title: Introduction
+description: Build production-ready Convex applications with beautifully designed, accessible React components that include both frontend UI and backend functions.
+---
+
+<Note>
+  One command installs complete features with React components **and** Convex backend functions. Build faster, ship sooner.
+</Note>
+
+## What is Convex UI?
+
+Convex UI is a collection of **copy-paste components** built on [shadcn/ui](https://ui.shadcn.com) design patterns that integrate seamlessly with [Convex](https://convex.dev). Each component includes:
+
+- **React frontend components** styled with Tailwind CSS
+- **Convex backend functions** with queries, mutations, and schema
+- **Full TypeScript support** for end-to-end type safety
+- **Framework flexibility** for Next.js, React, TanStack Start, and React Router v7
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock">
+    Complete password-based and social OAuth flows using Convex Auth. Includes login, signup, password reset, and protected routes.
+  </Card>
+  <Card title="File Storage" icon="cloud-arrow-up">
+    Drag-and-drop file uploads powered by Convex Storage. Built-in progress tracking and file validation.
+  </Card>
+  <Card title="Realtime Chat" icon="comments">
+    Instant messaging with automatic sync. Messages update across all clients in real-time with zero configuration.
+  </Card>
+  <Card title="Realtime Cursors" icon="arrow-pointer">
+    Collaborative presence indicators. Show where other users are pointing for multiplayer experiences.
+  </Card>
+</CardGroup>
+
+## Why Convex UI?
+
+### Realtime by default
+
+Convex provides reactive queries out of the box. When data changes anywhere, your UI updates automatically—no polling, no WebSocket configuration, no cache invalidation.
+
+```tsx
+// This component automatically re-renders when messages change
+const messages = useQuery(api.messages.list, { roomId: "general" });
+```
+
+The realtime connection is built into every component, powering features like live chat, presence indicators, and collaborative editing.
+
+### Full-stack in one command
+
+Each component includes both frontend and backend code. No separate API layer to build or maintain.
+
+```bash
+npx shadcn@latest add "https://convex-ui.vercel.app/r/realtime-chat-nextjs"
+```
+
+This single command installs:
+- React components in `src/components/`
+- Convex functions in `convex/`
+- Database schema definitions
+- All required dependencies
+
+<Info>
+  **Your code, your control.** Unlike npm packages, these components copy directly into your project. Customize styles, logic, and backend functions however you need.
+</Info>
+
+### Framework support
+
+Works with your preferred React framework:
+
+| Framework      | Status | Auth | Storage | Realtime |
+| -------------- | ------ | ---- | ------- | -------- |
+| Next.js        | ✅ Full | ✅   | ✅      | ✅       |
+| React (Vite)   | ✅ Full | ✅   | ✅      | ✅       |
+| TanStack Start | ✅ Full | ✅   | ✅      | ✅       |
+| React Router   | ✅ Full | ✅   | ✅      | ✅       |
+
+Each framework variant includes routing patterns, middleware, and configurations specific to that environment.
+
+## Component architecture
+
+Every Convex UI component follows this structure:
+
+```text
+your-project/
+├── src/components/          # React UI components
+│   ├── login-form.tsx
+│   └── realtime-chat.tsx
+├── convex/                  # Backend functions
+│   ├── schema.ts           # Database tables & indexes
+│   ├── auth.ts             # Authentication config
+│   ├── messages.ts         # Queries & mutations
+│   └── presence.ts         # Realtime presence
+└── .env.local              # Environment variables
+```
+
+Components are self-contained but composable. Mix and match features to build exactly what you need.
+
+## Available components
+
+### Authentication
+
+<CardGroup cols={2}>
+  <Card title="Password Auth" href="#">
+    Email/password login with signup, password reset, and email verification flows.
+  </Card>
+  <Card title="Social Auth" href="#">
+    OAuth with GitHub and Google. Extensible for additional providers.
+  </Card>
+</CardGroup>
+
+### Realtime features
+
+<CardGroup cols={3}>
+  <Card title="Chat" icon="message">
+    Real-time messaging with message history and typing indicators.
+  </Card>
+  <Card title="Cursors" icon="arrow-pointer">
+    Show live cursor positions for collaborative experiences.
+  </Card>
+  <Card title="Avatar Stack" icon="users">
+    Display online users with presence tracking.
+  </Card>
+</CardGroup>
+
+### Storage
+
+<CardGroup cols={1}>
+  <Card title="Dropzone" icon="file-arrow-up">
+    Drag-and-drop file uploads with progress tracking and validation.
+  </Card>
+</CardGroup>
+
+## How it works
+
+Convex UI uses the shadcn/ui registry system to deliver components:
+
+<Steps>
+  <Step title="Install a component">
+    Run the add command for your framework:
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/password-based-auth-nextjs"
+    ```
+  </Step>
+  <Step title="Files are copied to your project">
+    - React components → `src/components/`
+    - Convex functions → `convex/`
+    - Dependencies installed automatically
+  </Step>
+  <Step title="Start Convex dev server">
+    ```bash
+    npx convex dev
+    ```
+    Backend functions deploy automatically with hot reload.
+  </Step>
+  <Step title="Use the component">
+    Import and use like any React component:
+    ```tsx
+    import { RealtimeChat } from "@/components/realtime-chat";
+    
+    export default function ChatPage() {
+      return <RealtimeChat roomName="general" username="Alice" />;
+    }
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  Components are installed locally, so you can customize anything—styles, validation logic, backend queries, or database schema.
+</Tip>
+
+## Attribution
+
+Convex UI is based on the [Supabase UI Library](https://github.com/supabase/supabase/tree/master/apps/ui-library) (Apache 2.0). The original work has been adapted to use [Convex](https://convex.dev) as the backend platform.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Set up your first Convex UI component in under 5 minutes
+  </Card>
+  <Card title="FAQ" icon="circle-question" href="/faq">
+    Common questions about installation, frameworks, and troubleshooting
+  </Card>
+</CardGroup>

@@ -1,0 +1,227 @@
+---
+title: Convex Client Setup
+description: Configure the Convex client and provider for React applications
+---
+
+The Convex client setup is the foundation for integrating Convex into your React application. It creates a real-time connection to your Convex backend and provides authentication support.
+
+## Installation
+
+All React components automatically include the client setup files. When you install any component, these files are added to your project:
+
+```bash
+npx shadcn@latest add https://convex-ui.vercel.app/r/password-based-auth-react
+```
+
+This creates:
+- `lib/convex/client.ts` - Convex client instance
+- `lib/convex/provider.tsx` - React provider component
+
+## Client Configuration
+
+The client is configured to connect to your Convex deployment using environment variables.
+
+### lib/convex/client.ts
+
+```tsx
+import { ConvexReactClient } from "convex/react";
+
+const convexUrl = (import.meta as any).env.VITE_CONVEX_URL as string;
+
+export const convex = new ConvexReactClient(convexUrl);
+```
+
+<Note>
+For Vite-based React apps, environment variables must be prefixed with `VITE_` to be accessible in the browser.
+</Note>
+
+## Provider Setup
+
+The provider wraps your application and enables Convex queries, mutations, and authentication.
+
+### lib/convex/provider.tsx
+
+```tsx
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { ConvexReactClient } from "convex/react";
+import { ReactNode } from "react";
+
+const convex = new ConvexReactClient(
+  (import.meta as any).env.VITE_CONVEX_URL as string,
+);
+
+export function ConvexClientProvider({ children }: { children: ReactNode }) {
+  return <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>;
+}
+```
+
+## Usage
+
+Wrap your application root with the `ConvexClientProvider`:
+
+<CodeGroup>
+
+```tsx main.tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import { ConvexClientProvider } from './lib/convex/provider'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ConvexClientProvider>
+      <App />
+    </ConvexClientProvider>
+  </React.StrictMode>,
+)
+```
+
+```tsx App.tsx
+import { useQuery } from "convex/react";
+import { api } from "./convex/_generated/api";
+
+function App() {
+  const data = useQuery(api.myFunction.list);
+  
+  return (
+    <div>
+      {/* Your app components */}
+    </div>
+  );
+}
+
+export default App;
+```
+
+</CodeGroup>
+
+## Environment Variables
+
+Create a `.env` file in your project root:
+
+```bash .env
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
+CONVEX_DEPLOYMENT=your-deployment-name
+```
+
+<Steps>
+
+### Get Your Convex URL
+
+Run `npx convex dev` to start the Convex development server. The deployment URL will be displayed in the terminal.
+
+### Add to Environment
+
+Copy the URL (e.g., `https://happy-animal-123.convex.cloud`) and add it to your `.env` file as `VITE_CONVEX_URL`.
+
+### Restart Dev Server
+
+Restart your Vite dev server to load the new environment variables.
+
+</Steps>
+
+## Features
+
+<CardGroup cols={2}>
+
+<Card title="Real-time Queries" icon="bolt">
+Automatically subscribes to database changes and re-renders components when data updates.
+</Card>
+
+<Card title="Authentication" icon="lock">
+Integrates Convex Auth for user authentication with password and OAuth providers.
+</Card>
+
+<Card title="Type Safety" icon="shield">
+Full TypeScript support with generated types from your Convex schema.
+</Card>
+
+<Card title="Optimistic Updates" icon="rocket">
+Update UI instantly while mutations process in the background.
+</Card>
+
+</CardGroup>
+
+## Using Convex Hooks
+
+Once the provider is set up, you can use Convex hooks anywhere in your app:
+
+```tsx
+import { useQuery, useMutation } from "convex/react";
+import { api } from "./convex/_generated/api";
+import { useAuthActions } from "@convex-dev/auth/react";
+
+function MyComponent() {
+  // Query data (real-time)
+  const messages = useQuery(api.messages.list, { roomId: "general" });
+  
+  // Mutations
+  const sendMessage = useMutation(api.messages.send);
+  
+  // Authentication
+  const { signIn, signOut } = useAuthActions();
+  
+  // ...
+}
+```
+
+## API Reference
+
+### ConvexClientProvider
+
+The main provider component that wraps your application.
+
+<ParamField path="children" type="ReactNode" required>
+  Your application components
+</ParamField>
+
+### convex
+
+The Convex client instance. You can import this directly if you need to access the client imperatively:
+
+```tsx
+import { convex } from "./lib/convex/client";
+
+// Use client directly
+const result = await convex.query(api.myFunction.get, { id: "123" });
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Error: VITE_CONVEX_URL is not defined">
+  Make sure you've created a `.env` file with `VITE_CONVEX_URL` and restarted your dev server. Vite only loads environment variables on startup.
+</Accordion>
+
+<Accordion title="Queries return undefined">
+  This is normal while the initial connection is being established. Check the connection status with `useConvex()` hook or add loading states to your components.
+</Accordion>
+
+<Accordion title="Type errors in api imports">
+  Run `npx convex dev` to generate TypeScript types from your Convex functions. Make sure the `convex/_generated` directory is created.
+</Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Password Auth" href="/react/password-based-auth">
+  Add email/password authentication to your app
+</Card>
+
+<Card title="Social Auth" href="/react/social-auth">
+  Enable GitHub and Google sign-in
+</Card>
+
+<Card title="Realtime Chat" href="/react/realtime-chat">
+  Build a real-time chat component
+</Card>
+
+<Card title="File Upload" href="/react/dropzone">
+  Add file upload with Convex storage
+</Card>
+
+</CardGroup>

@@ -1,0 +1,439 @@
+---
+title: Realtime Components
+description: API reference for realtime collaboration components including chat, cursors, and avatar stack
+---
+
+## RealtimeChat
+
+A realtime chat component with live message updates and connection status.
+
+### Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the chat room
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name for the current user
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the component
+</ParamField>
+
+### Hook: useRealtimeChat
+
+The component uses the `useRealtimeChat` hook for managing chat state.
+
+#### Hook Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the chat room
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name for the current user
+</ParamField>
+
+#### Hook Return Values
+
+<ResponseField name="messages" type="ChatMessage[]">
+  Array of chat messages in the room
+</ResponseField>
+
+<ResponseField name="sendMessage" type="(content: string) => Promise<void>">
+  Function to send a new message
+</ResponseField>
+
+<ResponseField name="isConnected" type="boolean">
+  Connection status to the realtime backend
+</ResponseField>
+
+### Types
+
+```typescript
+interface UseRealtimeChatProps {
+  roomName: string;
+  username: string;
+}
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  user: {
+    name: string;
+  };
+  createdAt: string;
+}
+```
+
+### Example
+
+```tsx
+import { RealtimeChat } from "@/components/realtime-chat";
+
+export default function ChatRoom() {
+  return (
+    <RealtimeChat
+      roomName="general"
+      username="John Doe"
+      className="h-[600px]"
+    />
+  );
+}
+```
+
+### Direct Hook Usage
+
+```tsx
+import { useRealtimeChat } from "@/hooks/use-realtime-chat";
+
+export default function CustomChat() {
+  const { messages, sendMessage, isConnected } = useRealtimeChat({
+    roomName: "general",
+    username: "John Doe",
+  });
+
+  return (
+    <div>
+      <div>Connected: {isConnected ? "Yes" : "No"}</div>
+      {messages.map((msg) => (
+        <div key={msg.id}>
+          {msg.user.name}: {msg.content}
+        </div>
+      ))}
+      <button onClick={() => sendMessage("Hello!")}>
+        Send
+      </button>
+    </div>
+  );
+}
+```
+
+---
+
+## RealtimeCursors
+
+A component for displaying realtime cursor positions of multiple users.
+
+### Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the cursor room
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name for the current user's cursor
+</ParamField>
+
+<ParamField path="userColor" type="string" default="#3b82f6">
+  Color for the current user's cursor (hex color)
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode">
+  Content to render inside the cursor tracking area
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the component
+</ParamField>
+
+### Hook: useRealtimeCursors
+
+The component uses the `useRealtimeCursors` hook for managing cursor state.
+
+#### Hook Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the cursor room
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name for the current user's cursor
+</ParamField>
+
+<ParamField path="userColor" type="string" default="#3b82f6">
+  Color for the current user's cursor (hex color)
+</ParamField>
+
+<ParamField path="throttleMs" type="number" default="100">
+  Throttle interval in milliseconds for cursor position updates
+</ParamField>
+
+#### Hook Return Values
+
+<ResponseField name="cursors" type="Cursor[]">
+  Array of other users' cursor positions (excludes current user)
+</ResponseField>
+
+<ResponseField name="updateCursor" type="(position: CursorPosition) => void">
+  Function to update the current user's cursor position
+</ResponseField>
+
+<ResponseField name="createMouseMoveHandler" type="(container: HTMLElement) => (e: MouseEvent) => void">
+  Creates a mouse move event handler that calculates container-relative positions
+</ResponseField>
+
+<ResponseField name="setContainer" type="(container: HTMLElement | null) => void">
+  Sets the container reference for coordinate calculations
+</ResponseField>
+
+<ResponseField name="isConnected" type="boolean">
+  Connection status to the realtime backend
+</ResponseField>
+
+<ResponseField name="sessionId" type="string">
+  Unique session identifier for the current user
+</ResponseField>
+
+### Types
+
+```typescript
+interface CursorPosition {
+  x: number;
+  y: number;
+}
+
+interface Cursor {
+  id: string;
+  name: string;
+  color: string;
+  position: CursorPosition;
+}
+
+interface CursorData {
+  position: CursorPosition;
+  name: string;
+  color: string;
+}
+
+interface UseRealtimeCursorsProps {
+  roomName: string;
+  username: string;
+  userColor?: string;
+  throttleMs?: number;
+}
+```
+
+### Example
+
+```tsx
+import { RealtimeCursors } from "@/components/realtime-cursors";
+
+export default function CollaborativeCanvas() {
+  return (
+    <RealtimeCursors
+      roomName="canvas-room"
+      username="John Doe"
+      userColor="#ff6b6b"
+      className="w-full h-screen"
+    >
+      <div>Your canvas content here</div>
+    </RealtimeCursors>
+  );
+}
+```
+
+### Direct Hook Usage
+
+```tsx
+import { useRealtimeCursors } from "@/hooks/use-realtime-cursors";
+import { useEffect, useRef } from "react";
+
+export default function CustomCursors() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { cursors, createMouseMoveHandler, setContainer, isConnected } =
+    useRealtimeCursors({
+      roomName: "canvas-room",
+      username: "John Doe",
+      userColor: "#ff6b6b",
+      throttleMs: 50,
+    });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    setContainer(container);
+    const handleMove = createMouseMoveHandler(container);
+    container.addEventListener("mousemove", handleMove);
+
+    return () => {
+      container.removeEventListener("mousemove", handleMove);
+      setContainer(null);
+    };
+  }, [createMouseMoveHandler, setContainer]);
+
+  return (
+    <div ref={containerRef}>
+      {cursors.map((cursor) => (
+        <div
+          key={cursor.id}
+          style={{
+            position: "absolute",
+            left: cursor.position.x,
+            top: cursor.position.y,
+            color: cursor.color,
+          }}
+        >
+          {cursor.name}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
+## RealtimeAvatarStack
+
+A component that displays avatars of users currently present in a room.
+
+### Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the presence room
+</ParamField>
+
+<ParamField path="user" type="object" required>
+  Current user information
+  
+  <Expandable title="user properties">
+    <ParamField path="name" type="string" required>
+      User's display name
+    </ParamField>
+    
+    <ParamField path="image" type="string">
+      URL to user's avatar image
+    </ParamField>
+    
+    <ParamField path="color" type="string">
+      Fallback color for avatar (hex color)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="maxVisible" type="number" default="5">
+  Maximum number of avatars to display before showing count
+</ParamField>
+
+<ParamField path="size" type="'sm' | 'md' | 'lg'" default="md">
+  Size of the avatar stack
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the component
+</ParamField>
+
+### Hook: useRealtimePresenceRoom
+
+The component uses the `useRealtimePresenceRoom` hook for managing presence state.
+
+#### Hook Props
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the presence room
+</ParamField>
+
+<ParamField path="user" type="UserPresence" required>
+  Current user information
+</ParamField>
+
+<ParamField path="heartbeatMs" type="number" default="10000">
+  Interval in milliseconds for sending presence heartbeats
+</ParamField>
+
+#### Hook Return Values
+
+<ResponseField name="users" type="PresenceUser[]">
+  Array of users currently present in the room
+</ResponseField>
+
+<ResponseField name="isConnected" type="boolean">
+  Connection status to the realtime backend
+</ResponseField>
+
+<ResponseField name="userCount" type="number">
+  Total number of users in the room
+</ResponseField>
+
+### Types
+
+```typescript
+interface UserPresence {
+  name: string;
+  image?: string;
+  color?: string;
+}
+
+interface PresenceUser {
+  id: string;
+  name: string;
+  image?: string;
+  color?: string;
+}
+
+interface UseRealtimePresenceRoomProps {
+  roomName: string;
+  user: UserPresence;
+  heartbeatMs?: number;
+}
+```
+
+### Example
+
+```tsx
+import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
+
+export default function DocumentHeader() {
+  return (
+    <RealtimeAvatarStack
+      roomName="document-123"
+      user={{
+        name: "John Doe",
+        image: "https://example.com/avatar.jpg",
+        color: "#3b82f6",
+      }}
+      maxVisible={3}
+      size="sm"
+    />
+  );
+}
+```
+
+### Direct Hook Usage
+
+```tsx
+import { useRealtimePresenceRoom } from "@/hooks/use-realtime-presence-room";
+
+export default function CustomPresence() {
+  const { users, isConnected, userCount } = useRealtimePresenceRoom({
+    roomName: "document-123",
+    user: {
+      name: "John Doe",
+      image: "https://example.com/avatar.jpg",
+      color: "#3b82f6",
+    },
+    heartbeatMs: 5000,
+  });
+
+  return (
+    <div>
+      <div>Connected: {isConnected ? "Yes" : "No"}</div>
+      <div>Users online: {userCount}</div>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### Notes
+
+- The component automatically joins the room on mount and leaves on unmount
+- Presence heartbeats are sent periodically to maintain user presence
+- Session IDs are generated uniquely per component instance to avoid conflicts in iframes/tabs

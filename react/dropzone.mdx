@@ -1,0 +1,632 @@
+---
+title: Dropzone
+description: File upload component with drag-and-drop, validation, and Convex storage integration
+---
+
+A production-ready file upload component with drag-and-drop support, file validation, upload progress, and complete Convex storage integration.
+
+## Installation
+
+```bash
+npx shadcn@latest add https://convex-ui.vercel.app/r/dropzone-react
+```
+
+This installs:
+- `Dropzone` component with drag-and-drop UI
+- `useConvexUpload` hook for upload logic
+- File management backend functions
+- Convex storage integration
+- Convex client setup
+
+## What's Included
+
+<CardGroup cols={2}>
+
+<Card title="Drag & Drop" icon="hand-pointer">
+  Intuitive drag-and-drop interface with visual feedback
+</Card>
+
+<Card title="File Validation" icon="shield-check">
+  Size limits, type restrictions, and error handling
+</Card>
+
+<Card title="Upload Progress" icon="spinner">
+  Visual feedback during upload with success/error states
+</Card>
+
+<Card title="Convex Storage" icon="database">
+  Direct upload to Convex with automatic metadata tracking
+</Card>
+
+</CardGroup>
+
+## Setup
+
+<Steps>
+
+### Deploy Convex Backend
+
+```bash
+npx convex dev
+```
+
+### Configure Environment
+
+```bash .env
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
+```
+
+### Add Provider
+
+Ensure `ConvexClientProvider` wraps your app (automatically included).
+
+</Steps>
+
+## Component
+
+### Dropzone
+
+File upload component with drag-and-drop interface.
+
+```tsx
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+function FileUploadPage() {
+  const upload = useConvexUpload({
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 3,
+    allowedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf'],
+  });
+  
+  return (
+    <div className="container max-w-2xl mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-6">Upload Files</h1>
+      <Dropzone upload={upload} />
+    </div>
+  );
+}
+```
+
+#### Props
+
+<ParamField path="upload" type="UseConvexUploadReturn" required>
+  Upload state and handlers from `useConvexUpload` hook.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the dropzone container.
+</ParamField>
+
+## useConvexUpload Hook
+
+Manages file upload state and logic.
+
+```tsx
+import { useConvexUpload } from '@/hooks/use-convex-upload';
+
+const upload = useConvexUpload({
+  allowedMimeTypes: ['image/*', 'video/*'],
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFiles: 5,
+});
+```
+
+### Options
+
+<ParamField path="allowedMimeTypes" type="string[]" default={[]}>
+  Allowed MIME types (e.g., `['image/png', 'image/jpeg']`). Wildcards supported (`'image/*'`). Empty array allows all types.
+</ParamField>
+
+<ParamField path="maxFileSize" type="number" default={Infinity}>
+  Maximum file size in bytes (e.g., `5 * 1024 * 1024` for 5MB).
+</ParamField>
+
+<ParamField path="maxFiles" type="number" default={1}>
+  Maximum number of files allowed per upload.
+</ParamField>
+
+### Return Value
+
+```typescript
+{
+  // State
+  files: FileWithPreview[],
+  loading: boolean,
+  errors: { name: string; message: string }[],
+  successes: string[],
+  isSuccess: boolean,
+  
+  // Actions
+  setFiles: (files: FileWithPreview[]) => void,
+  onUpload: () => Promise<void>,
+  
+  // Config
+  maxFileSize: number,
+  maxFiles: number,
+  allowedMimeTypes: string[],
+  
+  // Dropzone props
+  getRootProps: () => object,
+  getInputProps: () => object,
+  isDragActive: boolean,
+  open: () => void,
+}
+```
+
+## Usage Examples
+
+<CodeGroup>
+
+```tsx Image Upload
+import { Dropzone } from '@/components/dropzone';
+import { useConvexUpload } from '@/hooks/use-convex-upload';
+
+function ImageUploader() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 1,
+  });
+  
+  return (
+    <div className="max-w-md mx-auto">
+      <h2>Upload Profile Picture</h2>
+      <Dropzone upload={upload} />
+    </div>
+  );
+}
+```
+
+```tsx Multiple Files
+import { Dropzone } from '@/components/dropzone';
+import { useConvexUpload } from '@/hooks/use-convex-upload';
+
+function DocumentUploader() {
+  const upload = useConvexUpload({
+    allowedMimeTypes: ['application/pdf', 'application/msword'],
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFiles: 10,
+  });
+  
+  return (
+    <div>
+      <h2>Upload Documents</h2>
+      <Dropzone upload={upload} />
+      
+      {upload.isSuccess && (
+        <p className="text-green-600 mt-4">
+          Successfully uploaded {upload.successes.length} files!
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
+```tsx Custom Handling
+import { useConvexUpload } from '@/hooks/use-convex-upload';
+import { useEffect } from 'react';
+
+function CustomUploader() {
+  const upload = useConvexUpload({
+    maxFileSize: 2 * 1024 * 1024,
+    maxFiles: 3,
+  });
+  
+  useEffect(() => {
+    if (upload.isSuccess) {
+      console.log('Upload complete!', upload.successes);
+      // Redirect or show notification
+    }
+  }, [upload.isSuccess]);
+  
+  return (
+    <div>
+      <Dropzone upload={upload} />
+      
+      {upload.errors.length > 0 && (
+        <div className="text-red-600 mt-4">
+          <p>Upload errors:</p>
+          <ul>
+            {upload.errors.map(err => (
+              <li key={err.name}>{err.name}: {err.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+```tsx With Authentication
+import { Dropzone } from '@/components/dropzone';
+import { useConvexUpload } from '@/hooks/use-convex-upload';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+
+function AuthenticatedUpload() {
+  const user = useQuery(api.users.current);
+  const upload = useConvexUpload({
+    maxFileSize: 5 * 1024 * 1024,
+  });
+  
+  if (!user) {
+    return <div>Sign in to upload files</div>;
+  }
+  
+  return (
+    <div>
+      <p>Uploading as {user.name}</p>
+      <Dropzone upload={upload} />
+    </div>
+  );
+}
+```
+
+</CodeGroup>
+
+## Features
+
+### Drag and Drop
+
+Intuitive drag-and-drop interface:
+- Hover effect when dragging files over dropzone
+- Click to browse files
+- Visual feedback during drag
+
+### File Preview
+
+Shows preview for each file:
+- Image thumbnails for image files
+- File type icons for other files
+- File name and size
+- Upload status (loading, success, error)
+
+### Validation
+
+Client-side validation before upload:
+- File type checking via MIME types
+- File size limits
+- Maximum file count
+- Clear error messages
+
+### Error Handling
+
+Comprehensive error states:
+- Per-file validation errors
+- Upload errors (network, server)
+- Visual error indicators
+- Retry failed uploads
+
+## Backend Functions
+
+### generateUploadUrl
+
+Generate a temporary upload URL.
+
+```typescript
+const uploadUrl = await generateUploadUrl();
+```
+
+**Returns:** `string` - Temporary URL for file upload
+
+**Security Note:** This is a public mutation. For production, consider adding rate limiting or authentication.
+
+### saveFile
+
+Save file metadata after upload.
+
+```typescript
+await saveFile({
+  storageId: "kg2...",
+  name: "document.pdf",
+  type: "application/pdf",
+  size: 1024000,
+  sessionId: "session-123" // Optional
+});
+```
+
+**Arguments:**
+<ParamField path="storageId" type="Id<'_storage'>" required>
+  Storage ID returned from Convex upload
+</ParamField>
+<ParamField path="name" type="string" required>
+  Original filename (max 255 chars)
+</ParamField>
+<ParamField path="type" type="string" required>
+  MIME type of the file
+</ParamField>
+<ParamField path="size" type="number" required>
+  File size in bytes (max 50MB)
+</ParamField>
+<ParamField path="sessionId" type="string">
+  Session ID for demo mode (optional)
+</ParamField>
+
+**Returns:** `Id<"files">` - The created file record ID
+
+### list
+
+List files for current user or session.
+
+```typescript
+const files = useQuery(api.files.list, { 
+  sessionId: "session-123" 
+});
+```
+
+**Returns:**
+```typescript
+Array<{
+  _id: Id<"files">,
+  _creationTime: number,
+  storageId: Id<"_storage">,
+  userId?: Id<"users">,
+  sessionId?: string,
+  name: string,
+  type: string,
+  size: number,
+  url: string | null
+}>
+```
+
+### getUrl
+
+Get download URL for a file.
+
+```typescript
+const url = useQuery(api.files.getUrl, { 
+  storageId: "kg2..." 
+});
+```
+
+### remove
+
+Delete a file (storage + metadata).
+
+```typescript
+await remove({
+  fileId: "j97...",
+  sessionId: "session-123" // Required for demo mode
+});
+```
+
+## Upload Flow
+
+<Steps>
+
+### User Selects Files
+
+User drags files or clicks to browse. Files are validated client-side.
+
+### Generate Upload URL
+
+For each valid file, request a temporary upload URL from Convex:
+
+```typescript
+const uploadUrl = await generateUploadUrl();
+```
+
+### Upload to Storage
+
+Upload file directly to Convex storage:
+
+```typescript
+const response = await fetch(uploadUrl, {
+  method: "POST",
+  headers: { "Content-Type": file.type },
+  body: file,
+});
+const { storageId } = await response.json();
+```
+
+### Save Metadata
+
+Save file information to database:
+
+```typescript
+await saveFile({
+  storageId,
+  name: file.name,
+  type: file.type,
+  size: file.size,
+});
+```
+
+### Show Success
+
+Update UI with success state and show uploaded files.
+
+</Steps>
+
+## File Types
+
+### Supported MIME Types
+
+Common MIME type examples:
+
+```typescript
+// Images
+'image/png'
+'image/jpeg'
+'image/gif'
+'image/webp'
+'image/*' // All images
+
+// Documents
+'application/pdf'
+'application/msword'
+'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+'text/plain'
+
+// Videos
+'video/mp4'
+'video/webm'
+'video/*' // All videos
+
+// Audio
+'audio/mpeg'
+'audio/wav'
+'audio/*' // All audio
+```
+
+### File Icons
+
+The component shows different icons based on file type:
+- Images: `ImageIcon` + thumbnail preview
+- Videos: `FileVideoIcon`
+- Audio: `FileAudioIcon`
+- Text/Documents: `FileTextIcon`
+- Other: `FileIcon`
+
+## Validation Errors
+
+Common validation error codes:
+
+- `file-invalid-type`: File type not allowed
+- `file-too-large`: File exceeds size limit
+- `too-many-files`: Too many files selected
+
+## Customization
+
+### Custom Dropzone Style
+
+```tsx
+<Dropzone 
+  upload={upload}
+  className="border-4 border-dashed border-primary rounded-xl"
+/>
+```
+
+### Custom File Preview
+
+Modify the file card rendering in `components/dropzone.tsx`:
+
+```tsx
+<Card className="...">
+  <CardContent className="flex items-center gap-4 p-4">
+    {/* Your custom preview layout */}
+  </CardContent>
+</Card>
+```
+
+### Custom Upload Button
+
+```tsx
+<Button 
+  onClick={upload.onUpload}
+  disabled={!canUpload}
+  className="w-full bg-gradient-to-r from-blue-500 to-purple-500"
+>
+  Upload Files
+</Button>
+```
+
+## Schema
+
+The files table schema:
+
+```typescript convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  files: defineTable({
+    storageId: v.id("_storage"),
+    userId: v.optional(v.id("users")),
+    sessionId: v.optional(v.string()),
+    name: v.string(),
+    type: v.string(),
+    size: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_session", ["sessionId"]),
+});
+```
+
+## Security
+
+<Warning>
+  The `generateUploadUrl` mutation is public by default. For production apps:
+  - Add rate limiting to prevent abuse
+  - Require authentication
+  - Implement file type/size validation on the server
+  - Consider virus scanning for uploaded files
+</Warning>
+
+Security features included:
+- File size validation (max 50MB backend)
+- Filename sanitization
+- User/session ownership tracking
+- Storage cleanup on file deletion
+
+## Demo Mode
+
+Works without authentication:
+- Each session gets a unique ID
+- Files associated with session
+- Session ID NOT in localStorage (iframe-safe)
+
+## Performance
+
+<CardGroup cols={2}>
+
+<Card title="Direct Upload" icon="upload">
+  Files upload directly to Convex storage (no intermediate server)
+</Card>
+
+<Card title="Parallel Processing" icon="bolt">
+  Multiple files upload in parallel
+</Card>
+
+<Card title="Retry Logic" icon="rotate">
+  Failed uploads can be retried without re-selecting files
+</Card>
+
+<Card title="Efficient Storage" icon="database">
+  Convex storage optimized for file delivery
+</Card>
+
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Upload fails silently">
+  Check browser console for errors. Verify `VITE_CONVEX_URL` is set and `npx convex dev` is running.
+</Accordion>
+
+<Accordion title="File size limit exceeded">
+  The backend enforces a 50MB limit. Adjust `maxFileSize` in your hook to match or be lower.
+</Accordion>
+
+<Accordion title="MIME type errors">
+  Make sure `allowedMimeTypes` matches the files you're uploading. Use wildcards like `'image/*'` for flexibility.
+</Accordion>
+
+<Accordion title="Preview images not showing">
+  Image previews are generated using `URL.createObjectURL()`. Check that the file is a valid image type.
+</Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Password Auth" href="/react/password-based-auth">
+  Authenticate users before uploading
+</Card>
+
+<Card title="Realtime Chat" href="/react/realtime-chat">
+  Share files in chat messages
+</Card>
+
+<Card title="Current User Avatar" href="/react/current-user-avatar">
+  Upload profile pictures
+</Card>
+
+</CardGroup>

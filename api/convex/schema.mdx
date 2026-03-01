@@ -1,0 +1,264 @@
+---
+title: "Database Schema"
+description: "Convex database schema definitions including tables, fields, and indexes"
+---
+
+## Overview
+
+The Convex database schema defines the structure of your application's data. It includes tables for users, messages, presence tracking, and file uploads.
+
+## Schema Definition
+
+Location: `convex/schema.ts:6`
+
+```typescript
+export default defineSchema({
+  ...authTables,
+  users: defineTable({...}),
+  messages: defineTable({...}),
+  presence: defineTable({...}),
+  files: defineTable({...}),
+});
+```
+
+## Tables
+
+### users
+
+Stores user profile information with authentication support.
+
+**Location:** `convex/schema.ts:10`
+
+#### Fields
+
+<ParamField path="name" type="string" optional>
+  User's display name
+</ParamField>
+
+<ParamField path="email" type="string" optional>
+  User's email address
+</ParamField>
+
+<ParamField path="image" type="string" optional>
+  URL to user's profile image
+</ParamField>
+
+<ParamField path="emailVerificationTime" type="number" optional>
+  Timestamp when email was verified
+</ParamField>
+
+<ParamField path="isAnonymous" type="boolean" optional>
+  Whether this is an anonymous user account
+</ParamField>
+
+#### Indexes
+
+- `by_email` - Index on `[email]` field for email lookups
+- `by_anonymous` - Index on `[isAnonymous]` field for filtering anonymous users
+
+#### Example
+
+```typescript
+const user = {
+  name: "Alice Johnson",
+  email: "alice@example.com",
+  image: "https://example.com/avatar.jpg",
+  isAnonymous: false
+};
+```
+
+---
+
+### messages
+
+Stores chat messages for realtime chat functionality. Supports both authenticated and demo mode.
+
+**Location:** `convex/schema.ts:21`
+
+#### Fields
+
+<ParamField path="roomId" type="string" required>
+  Identifier for the chat room
+</ParamField>
+
+<ParamField path="userId" type="Id<'users'>" optional>
+  Reference to the user who sent the message. Optional for demo mode.
+</ParamField>
+
+<ParamField path="content" type="string" required>
+  Message text content
+</ParamField>
+
+<ParamField path="userName" type="string" required>
+  Display name of the message sender
+</ParamField>
+
+<ParamField path="sessionId" type="string" optional>
+  Session identifier for tracking demo sessions
+</ParamField>
+
+#### Indexes
+
+- `by_room` - Index on `[roomId]` field for efficient room-based queries
+
+#### Example
+
+```typescript
+const message = {
+  roomId: "general",
+  userId: "j97abc123...",
+  content: "Hello, world!",
+  userName: "Alice",
+  sessionId: "session_xyz"
+};
+```
+
+---
+
+### presence
+
+Tracks real-time user presence for features like cursors and avatar stacks.
+
+**Location:** `convex/schema.ts:31`
+
+#### Fields
+
+<ParamField path="roomId" type="string" required>
+  Identifier for the room/space
+</ParamField>
+
+<ParamField path="userId" type="Id<'users'>" optional>
+  Reference to the user. Optional for demo mode.
+</ParamField>
+
+<ParamField path="sessionId" type="string" optional>
+  Session identifier for tracking demo sessions
+</ParamField>
+
+<ParamField path="data" type="object" required>
+  Presence data object containing user state
+  
+  <ParamField path="data.cursor" type="{x: number, y: number}" optional>
+    Cursor position coordinates
+  </ParamField>
+  
+  <ParamField path="data.position" type="{x: number, y: number}" optional>
+    Position coordinates (alias for cursor)
+  </ParamField>
+  
+  <ParamField path="data.status" type="string" optional>
+    User status text
+  </ParamField>
+  
+  <ParamField path="data.userName" type="string" optional>
+    User's display name
+  </ParamField>
+  
+  <ParamField path="data.userImage" type="string" optional>
+    URL to user's avatar image
+  </ParamField>
+  
+  <ParamField path="data.color" type="string" optional>
+    Color code for user's cursor/avatar
+  </ParamField>
+  
+  <ParamField path="data.name" type="string" optional>
+    Alternative name field
+  </ParamField>
+</ParamField>
+
+<ParamField path="lastSeen" type="number" required>
+  Timestamp of last presence update
+</ParamField>
+
+#### Indexes
+
+- `by_room` - Index on `[roomId]` for room-based queries
+- `by_user_and_room` - Index on `[userId, roomId]` for user-specific presence lookups
+- `by_session_and_room` - Index on `[sessionId, roomId]` for session-based presence lookups
+- `by_last_seen` - Index on `[lastSeen]` for cleanup of stale presence entries
+
+#### Example
+
+```typescript
+const presence = {
+  roomId: "canvas-1",
+  userId: "j97abc123...",
+  sessionId: "session_xyz",
+  data: {
+    cursor: { x: 150, y: 200 },
+    userName: "Alice",
+    userImage: "https://example.com/avatar.jpg",
+    color: "#FF6B6B",
+    status: "active"
+  },
+  lastSeen: 1709251200000
+};
+```
+
+---
+
+### files
+
+Tracks file uploads with references to Convex storage.
+
+**Location:** `convex/schema.ts:52`
+
+#### Fields
+
+<ParamField path="storageId" type="Id<'_storage'>" required>
+  Reference to the file in Convex storage
+</ParamField>
+
+<ParamField path="userId" type="Id<'users'>" optional>
+  Reference to the user who uploaded the file. Optional for demo mode.
+</ParamField>
+
+<ParamField path="sessionId" type="string" optional>
+  Session identifier for tracking demo uploads
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Original filename
+</ParamField>
+
+<ParamField path="type" type="string" required>
+  MIME type of the file
+</ParamField>
+
+<ParamField path="size" type="number" required>
+  File size in bytes
+</ParamField>
+
+#### Indexes
+
+- `by_user` - Index on `[userId]` for user-specific file queries
+- `by_session` - Index on `[sessionId]` for session-based file queries
+
+#### Example
+
+```typescript
+const file = {
+  storageId: "kg2abc123...",
+  userId: "j97abc123...",
+  sessionId: "session_xyz",
+  name: "document.pdf",
+  type: "application/pdf",
+  size: 2048576
+};
+```
+
+## Auth Tables
+
+The schema also includes authentication tables from `@convex-dev/auth/server`:
+
+```typescript
+import { authTables } from "@convex-dev/auth/server";
+
+export default defineSchema({
+  ...authTables,
+  // ... other tables
+});
+```
+
+These tables handle authentication sessions, tokens, and provider-specific data.

@@ -1,0 +1,515 @@
+---
+title: Realtime Chat
+description: A realtime chat component powered by Convex live queries with instant message synchronization
+---
+
+## Overview
+
+A production-ready realtime chat component that syncs messages instantly across all connected clients using Convex live queries. Features include auto-scrolling, connection status, message history, and demo mode support.
+
+## Features
+
+- Real-time message synchronization
+- Automatic scrolling to latest messages
+- Connection status indicator
+- Message history persistence
+- Demo mode (no auth required)
+- Loading states
+- Type-safe messages
+- Room-based chat
+- User identification
+
+## Installation
+
+<Steps>
+  <Step title="Install the component">
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/realtime-chat-tanstack
+    ```
+  </Step>
+
+  <Step title="Start Convex">
+    ```bash
+    npx convex dev
+    ```
+    The chat schema and functions will be deployed automatically.
+  </Step>
+</Steps>
+
+## What Gets Installed
+
+### Components
+
+- `realtime-chat.tsx` - Main chat interface
+- `chat-message.tsx` - Individual message display
+
+### Hooks
+
+- `use-realtime-chat.tsx` - Chat state and message sending
+- `use-chat-scroll.tsx` - Auto-scroll behavior
+
+### Backend (Convex)
+
+- `convex/messages.ts` - Message queries and mutations
+- `convex/schema.ts` - Messages database schema
+
+## Usage
+
+### Basic Chat
+
+```tsx
+import { RealtimeChat } from "@/components/realtime-chat";
+
+export function ChatPage() {
+  return (
+    <div className="h-screen p-4">
+      <RealtimeChat 
+        roomName="General"
+        username="Alice"
+      />
+    </div>
+  );
+}
+```
+
+### Multiple Chat Rooms
+
+```tsx
+import { RealtimeChat } from "@/components/realtime-chat";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+export function ChatRooms() {
+  const username = "Alice";
+
+  return (
+    <Tabs defaultValue="general" className="h-screen">
+      <TabsList>
+        <TabsTrigger value="general">General</TabsTrigger>
+        <TabsTrigger value="random">Random</TabsTrigger>
+        <TabsTrigger value="help">Help</TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="general" className="h-[calc(100vh-60px)]">
+        <RealtimeChat roomName="general" username={username} />
+      </TabsContent>
+      
+      <TabsContent value="random" className="h-[calc(100vh-60px)]">
+        <RealtimeChat roomName="random" username={username} />
+      </TabsContent>
+      
+      <TabsContent value="help" className="h-[calc(100vh-60px)]">
+        <RealtimeChat roomName="help" username={username} />
+      </TabsContent>
+    </Tabs>
+  );
+}
+```
+
+### With Authentication
+
+Use the current user's name:
+
+```tsx
+import { RealtimeChat } from "@/components/realtime-chat";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function AuthenticatedChat() {
+  const { data: user } = useQuery(convexQuery(api.users.current, {}));
+  const userName = useCurrentUserName();
+
+  if (!user || !userName) {
+    return <div>Please sign in to chat</div>;
+  }
+
+  return (
+    <RealtimeChat 
+      roomName="members-only" 
+      username={userName}
+    />
+  );
+}
+```
+
+### Custom Styling
+
+```tsx
+import { RealtimeChat } from "@/components/realtime-chat";
+
+<RealtimeChat 
+  roomName="General"
+  username="Alice"
+  className="max-w-4xl mx-auto border-2 border-primary rounded-xl shadow-2xl"
+/>
+```
+
+### In a Sidebar
+
+```tsx
+import { RealtimeChat } from "@/components/realtime-chat";
+
+export function Layout() {
+  return (
+    <div className="flex h-screen">
+      <main className="flex-1 p-6">
+        {/* Main content */}
+      </main>
+      
+      <aside className="w-96 border-l">
+        <RealtimeChat 
+          roomName="team-chat"
+          username="Alice"
+          className="h-full"
+        />
+      </aside>
+    </div>
+  );
+}
+```
+
+## API Reference
+
+### RealtimeChat Props
+
+```typescript
+interface RealtimeChatProps {
+  roomName: string;
+  username: string;
+  className?: string;
+}
+```
+
+<ParamField path="roomName" type="string" required>
+  Unique identifier for the chat room. Users in the same room see each other's messages.
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name for the current user. Shown next to their messages.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the chat container.
+</ParamField>
+
+### useRealtimeChat Hook
+
+```typescript
+interface UseRealtimeChatProps {
+  roomName: string;
+  username: string;
+}
+
+interface UseRealtimeChatReturn {
+  messages: ChatMessage[];
+  sendMessage: (content: string) => Promise<void>;
+  isConnected: boolean;
+}
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  user: { name: string };
+  createdAt: string;
+}
+```
+
+**Example:**
+
+```tsx
+import { useRealtimeChat } from "@/hooks/use-realtime-chat";
+
+function CustomChat() {
+  const { messages, sendMessage, isConnected } = useRealtimeChat({
+    roomName: "general",
+    username: "Alice",
+  });
+
+  return (
+    <div>
+      <div>Status: {isConnected ? "Connected" : "Disconnected"}</div>
+      <div>Messages: {messages.length}</div>
+      <button onClick={() => sendMessage("Hello!")}>
+        Send Message
+      </button>
+    </div>
+  );
+}
+```
+
+## Backend Implementation
+
+### Message Schema
+
+```typescript convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  messages: defineTable({
+    roomId: v.string(),
+    userId: v.optional(v.id("users")),
+    content: v.string(),
+    userName: v.string(),
+    sessionId: v.optional(v.string()),
+  }).index("by_room", ["roomId"]),
+});
+```
+
+### List Messages Query
+
+```typescript convex/messages.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+export const list = query({
+  args: { roomId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .order("asc")
+      .collect();
+  },
+});
+```
+
+### Send Message Mutation
+
+```typescript convex/messages.ts
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+export const send = mutation({
+  args: {
+    roomId: v.string(),
+    content: v.string(),
+    userName: v.string(),
+    sessionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Validate content
+    const content = args.content.trim();
+    if (!content || content.length > 2000) {
+      throw new Error("Invalid message content");
+    }
+
+    // Try to get authenticated user ID
+    let userId;
+    try {
+      const { getAuthUserId } = await import("@convex-dev/auth/server");
+      userId = await getAuthUserId(ctx);
+    } catch {
+      userId = undefined; // Demo mode
+    }
+
+    return await ctx.db.insert("messages", {
+      roomId: args.roomId,
+      userId,
+      content,
+      userName: args.userName.trim().slice(0, 50) || "Anonymous",
+      sessionId: args.sessionId,
+    });
+  },
+});
+```
+
+## Features in Detail
+
+### Auto-Scrolling
+
+The chat automatically scrolls to new messages:
+
+```tsx
+const { containerRef, scrollToBottom, shouldAutoScroll } = useChatScroll();
+
+useEffect(() => {
+  if (shouldAutoScroll()) {
+    scrollToBottom();
+  }
+}, [messages]);
+```
+
+- Scrolls to bottom when new messages arrive
+- Preserves scroll position when viewing history
+- Smooth scrolling animation
+
+### Connection Status
+
+Real-time connection indicator:
+
+```tsx
+<Badge variant={isConnected ? "default" : "destructive"}>
+  <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+  {isConnected ? "Connected" : "Disconnected"}
+</Badge>
+```
+
+### Demo Mode
+
+Works without authentication using session IDs:
+
+```tsx
+function getSessionId(): string {
+  if (typeof window === "undefined") return "";
+  let id = localStorage.getItem("demo-session-id");
+  if (!id) {
+    id = `demo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem("demo-session-id", id);
+  }
+  return id;
+}
+```
+
+### Message Validation
+
+Server-side validation prevents abuse:
+
+```typescript
+// Maximum message length
+const MAX_MESSAGE_LENGTH = 2000;
+
+// Validate content
+if (content.length > MAX_MESSAGE_LENGTH) {
+  throw new ConvexError({
+    code: "INVALID_INPUT",
+    message: `Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`,
+  });
+}
+```
+
+## Customization
+
+### Custom Message Component
+
+Replace the default message display:
+
+```tsx chat-message.tsx
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+interface ChatMessageProps {
+  message: {
+    content: string;
+    user: { name: string };
+    createdAt: string;
+  };
+  isOwnMessage: boolean;
+}
+
+export function ChatMessage({ message, isOwnMessage }: ChatMessageProps) {
+  return (
+    <div className={`flex gap-3 ${isOwnMessage ? "flex-row-reverse" : ""}`}>
+      <Avatar className="h-8 w-8">
+        <AvatarFallback>{message.user.name[0]}</AvatarFallback>
+      </Avatar>
+      <div className={`flex flex-col ${isOwnMessage ? "items-end" : ""}`}>
+        <span className="text-sm font-medium">{message.user.name}</span>
+        <div className={`rounded-lg px-4 py-2 ${
+          isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted"
+        }`}>
+          {message.content}
+        </div>
+        <span className="text-xs text-muted-foreground mt-1">
+          {new Date(message.createdAt).toLocaleTimeString()}
+        </span>
+      </div>
+    </div>
+  );
+}
+```
+
+### Custom Empty State
+
+```tsx
+{messages.length === 0 ? (
+  <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+    <MessageSquare className="h-12 w-12 text-muted-foreground" />
+    <div>
+      <h3 className="font-semibold">No messages yet</h3>
+      <p className="text-sm text-muted-foreground">
+        Be the first to start the conversation!
+      </p>
+    </div>
+  </div>
+) : (
+  messages.map((message) => (
+    <ChatMessage key={message.id} message={message} />
+  ))
+)}
+```
+
+### Add Reactions
+
+Extend the schema and components:
+
+```typescript convex/schema.ts
+messages: defineTable({
+  // ... existing fields
+  reactions: v.optional(v.array(v.object({
+    emoji: v.string(),
+    userId: v.id("users"),
+  }))),
+})
+```
+
+## Performance
+
+### Indexed Queries
+
+Messages are efficiently queried using indexes:
+
+```typescript
+.withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+```
+
+### Automatic Pagination
+
+For large message histories, add pagination:
+
+```typescript
+export const list = query({
+  args: { 
+    roomId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 100;
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .order("desc")
+      .take(limit);
+  },
+});
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Messages not appearing in real-time">
+    - Ensure Convex is running (`npx convex dev`)
+    - Check browser console for connection errors
+    - Verify the room name is exactly the same across clients
+  </Accordion>
+
+  <Accordion title="Auto-scroll not working">
+    - Make sure the chat container has a fixed height
+    - Check that `overflow-y-auto` is applied to the messages container
+  </Accordion>
+
+  <Accordion title="Connection status always shows 'Disconnected'">
+    - Verify `VITE_CONVEX_URL` is set correctly
+    - Check that `ConvexClientProvider` wraps your app
+  </Accordion>
+
+  <Accordion title="Cannot send messages">
+    - Check that the username prop is provided
+    - Verify the mutation is working in Convex dashboard
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [Realtime Cursor](/tanstack/realtime-cursor) - Show cursor positions
+- [Realtime Avatar Stack](/tanstack/realtime-avatar-stack) - Display active users
+- [Current User Avatar](/tanstack/current-user-avatar) - User profile pictures

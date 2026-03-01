@@ -1,0 +1,324 @@
+---
+title: Authentication Components
+description: API reference for authentication components including password-based and social authentication
+---
+
+## Password-Based Authentication
+
+### LoginForm
+
+A form component for email and password authentication.
+
+#### Props
+
+This component has no props. It manages its own state internally.
+
+#### State Management
+
+The component uses `useAuthActions` from `@convex-dev/auth/react` to access the `signIn` method.
+
+#### Internal State
+
+<ParamField path="email" type="string">
+  User's email address for authentication
+</ParamField>
+
+<ParamField path="password" type="string">
+  User's password for authentication
+</ParamField>
+
+<ParamField path="error" type="string | null">
+  Error message to display if authentication fails
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Loading state during authentication process
+</ParamField>
+
+#### Behavior
+
+Submits authentication with `flow: "signIn"` to the Convex Auth password provider.
+
+#### Example
+
+```tsx
+import { LoginForm } from "@/components/login-form";
+
+export default function LoginPage() {
+  return <LoginForm />;
+}
+```
+
+---
+
+### SignUpForm
+
+A form component for user registration with email and password.
+
+#### Props
+
+This component has no props. It manages its own state internally.
+
+#### State Management
+
+The component uses `useAuthActions` from `@convex-dev/auth/react` to access the `signIn` method and `useRouter` from `next/navigation` for navigation.
+
+#### Internal State
+
+<ParamField path="name" type="string">
+  User's display name
+</ParamField>
+
+<ParamField path="email" type="string">
+  User's email address
+</ParamField>
+
+<ParamField path="password" type="string">
+  User's password (minimum 8 characters)
+</ParamField>
+
+<ParamField path="confirmPassword" type="string">
+  Password confirmation field
+</ParamField>
+
+<ParamField path="error" type="string | null">
+  Error message to display if registration fails
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Loading state during registration process
+</ParamField>
+
+#### Validation
+
+- Passwords must match
+- Password must be at least 8 characters
+- Email must be valid email format
+
+#### Behavior
+
+Submits registration with `flow: "signUp"` to the Convex Auth password provider. On success, redirects to `/auth/sign-up-success`.
+
+#### Example
+
+```tsx
+import { SignUpForm } from "@/components/sign-up-form";
+
+export default function SignUpPage() {
+  return <SignUpForm />;
+}
+```
+
+---
+
+### ForgotPasswordForm
+
+A form component for initiating password reset flow.
+
+#### Props
+
+This component has no props. It manages its own state internally.
+
+#### State Management
+
+The component uses `useAuthActions` from `@convex-dev/auth/react` to access the `signIn` method and `useRouter` from `next/navigation` for navigation.
+
+#### Internal State
+
+<ParamField path="email" type="string">
+  User's email address to send reset code
+</ParamField>
+
+<ParamField path="error" type="string | null">
+  Error message to display if request fails
+</ParamField>
+
+<ParamField path="success" type="boolean">
+  Success state after code is sent
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Loading state during request process
+</ParamField>
+
+#### Behavior
+
+Submits password reset request with `flow: "reset"` to trigger the ResendOTPPasswordReset provider. Sends an 8-digit OTP code via email. On success, displays success message and button to proceed to update password page.
+
+#### Example
+
+```tsx
+import { ForgotPasswordForm } from "@/components/forgot-password-form";
+
+export default function ForgotPasswordPage() {
+  return <ForgotPasswordForm />;
+}
+```
+
+---
+
+### UpdatePasswordForm
+
+A form component for completing password reset with OTP code.
+
+#### Props
+
+This component has no props. It reads email from URL search parameters if available.
+
+#### State Management
+
+The component uses:
+- `useAuthActions` from `@convex-dev/auth/react` to access the `signIn` method
+- `useRouter` and `useSearchParams` from `next/navigation` for navigation and URL parameters
+
+#### Internal State
+
+<ParamField path="email" type="string">
+  User's email address (can be pre-filled from URL parameter)
+</ParamField>
+
+<ParamField path="code" type="string">
+  8-digit verification code received via email
+</ParamField>
+
+<ParamField path="password" type="string">
+  New password (minimum 8 characters)
+</ParamField>
+
+<ParamField path="confirmPassword" type="string">
+  Password confirmation field
+</ParamField>
+
+<ParamField path="error" type="string | null">
+  Error message to display if update fails
+</ParamField>
+
+<ParamField path="loading" type="boolean">
+  Loading state during update process
+</ParamField>
+
+#### Validation
+
+- Email is required
+- Code must be provided (8 digits)
+- Passwords must match
+- Password must be at least 8 characters
+
+#### Behavior
+
+Submits password update with `flow: "reset-verification"` including the code, email, and new password. On success, redirects to `/auth/login?message=password-updated`.
+
+#### Example
+
+```tsx
+import { UpdatePasswordForm } from "@/components/update-password-form";
+
+export default function UpdatePasswordPage() {
+  return <UpdatePasswordForm />;
+}
+```
+
+---
+
+### LogoutButton
+
+A button component for signing out users.
+
+#### Props
+
+<ParamField path="showIcon" type="boolean" default="true">
+  Whether to display the logout icon
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" default="Sign out">
+  Button text content
+</ParamField>
+
+<ParamField path="...props" type="React.ComponentProps<typeof Button>">
+  All other Button component props are supported
+</ParamField>
+
+#### State Management
+
+The component uses `useAuthActions` from `@convex-dev/auth/react` to access the `signOut` method.
+
+#### Example
+
+```tsx
+import { LogoutButton } from "@/components/logout-button";
+
+export default function Header() {
+  return (
+    <div>
+      <LogoutButton />
+      {/* Custom variant */}
+      <LogoutButton variant="destructive" showIcon={false}>
+        Log out
+      </LogoutButton>
+    </div>
+  );
+}
+```
+
+---
+
+## Social Authentication
+
+### SocialLoginForm
+
+A form component for OAuth authentication with social providers.
+
+#### Props
+
+<ParamField path="providers" type="Provider[]" default='["github", "google"]'>
+  Array of OAuth providers to display. Supported values: `"github"`, `"google"`
+</ParamField>
+
+#### Types
+
+```typescript
+type Provider = "github" | "google";
+
+interface SocialLoginFormProps {
+  providers?: Provider[];
+}
+```
+
+#### State Management
+
+The component uses `useAuthActions` from `@convex-dev/auth/react` to access the `signIn` method.
+
+#### Internal State
+
+<ParamField path="error" type="string | null">
+  Error message to display if authentication fails
+</ParamField>
+
+<ParamField path="loadingProvider" type="Provider | null">
+  Tracks which provider is currently being used for authentication
+</ParamField>
+
+#### Behavior
+
+Initiates OAuth flow by calling `signIn(provider)` where provider is the selected OAuth provider (e.g., "github" or "google").
+
+#### Example
+
+```tsx
+import { SocialLoginForm } from "@/components/login-form";
+
+export default function LoginPage() {
+  return (
+    <div>
+      {/* Default providers */}
+      <SocialLoginForm />
+      
+      {/* GitHub only */}
+      <SocialLoginForm providers={["github"]} />
+      
+      {/* Google only */}
+      <SocialLoginForm providers={["google"]} />
+    </div>
+  );
+}
+```

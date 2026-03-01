@@ -1,0 +1,648 @@
+---
+title: "Dropzone"
+description: "File upload component with drag-and-drop, validation, and Convex storage integration"
+---
+
+## Overview
+
+A complete file upload solution with Convex storage backend. Features include:
+
+- Drag-and-drop file selection
+- Click to browse fallback
+- File type validation
+- File size limits
+- Upload progress tracking
+- Image previews
+- Error handling
+- Demo mode support
+
+## Installation
+
+```bash
+npx @convex-dev/shadcn add convex/dropzone-nextjs
+```
+
+This installs:
+
+- `Dropzone` component
+- `useConvexUpload` hook
+- Complete Convex backend with file storage
+- File management functions
+
+## Usage
+
+### Basic Example
+
+```tsx
+"use client";
+
+import { Dropzone } from "@/components/dropzone";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+
+export default function UploadPage() {
+  const upload = useConvexUpload();
+  
+  return (
+    <div className="max-w-2xl mx-auto p-8">
+      <h1 className="text-2xl font-bold mb-6">Upload Files</h1>
+      <Dropzone upload={upload} />
+    </div>
+  );
+}
+```
+
+### With File Type Restrictions
+
+```tsx
+const upload = useConvexUpload({
+  allowedMimeTypes: ["image/*", "application/pdf"],
+  maxFileSize: 5 * 1024 * 1024, // 5MB
+  maxFiles: 3,
+});
+
+return <Dropzone upload={upload} />;
+```
+
+### Images Only
+
+```tsx
+const upload = useConvexUpload({
+  allowedMimeTypes: ["image/png", "image/jpeg", "image/gif"],
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFiles: 5,
+});
+
+return <Dropzone upload={upload} />;
+```
+
+## Hook API
+
+### useConvexUpload
+
+Manages file upload state and operations:
+
+```tsx
+const upload = useConvexUpload(options);
+```
+
+**Options:**
+
+<ParamField path="allowedMimeTypes" type="string[]" default="[]">
+  Array of allowed MIME types. Supports wildcards (e.g., `"image/*"`).
+  
+  Empty array = all types allowed.
+  
+  Examples:
+  - `["image/*"]` - All images
+  - `["image/png", "image/jpeg"]` - Only PNG and JPEG
+  - `["application/pdf"]` - Only PDF files
+</ParamField>
+
+<ParamField path="maxFileSize" type="number" default="Infinity">
+  Maximum file size in bytes.
+  
+  Examples:
+  - `1024 * 1024` - 1MB
+  - `5 * 1024 * 1024` - 5MB
+  - `50 * 1024 * 1024` - 50MB
+</ParamField>
+
+<ParamField path="maxFiles" type="number" default="1">
+  Maximum number of files that can be uploaded at once.
+</ParamField>
+
+**Return Value:**
+
+```typescript
+interface UseConvexUploadReturn {
+  // File management
+  files: FileWithPreview[];
+  setFiles: (files: FileWithPreview[]) => void;
+  
+  // Upload state
+  loading: boolean;
+  errors: { name: string; message: string }[];
+  successes: string[];
+  isSuccess: boolean;
+  
+  // Actions
+  onUpload: () => Promise<void>;
+  
+  // Configuration
+  maxFileSize: number;
+  maxFiles: number;
+  allowedMimeTypes: string[];
+  
+  // React Dropzone props
+  getRootProps: () => any;
+  getInputProps: () => any;
+  isDragActive: boolean;
+  open: () => void;
+}
+```
+
+## Component Source
+
+The Dropzone component provides a complete UI:
+
+```tsx title="components/dropzone.tsx"
+"use client";
+
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Upload, X, CheckCircle, AlertCircle } from "lucide-react";
+import { type UseConvexUploadReturn } from "../hooks/use-convex-upload";
+
+interface DropzoneProps {
+  upload: UseConvexUploadReturn;
+  className?: string;
+}
+
+export function Dropzone({ upload, className }: DropzoneProps) {
+  const {
+    files,
+    setFiles,
+    loading,
+    errors,
+    successes,
+    isSuccess,
+    onUpload,
+    maxFileSize,
+    maxFiles,
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    open,
+  } = upload;
+
+  const removeFile = (fileName: string) => {
+    setFiles(files.filter((f) => f.name !== fileName));
+  };
+
+  return (
+    <div className={`space-y-4 ${className ?? ""}`}>
+      {/* Dropzone area */}
+      <Card
+        {...getRootProps()}
+        className={`border-2 border-dashed cursor-pointer transition-all ${
+          isDragActive ? "border-primary bg-primary/10" : ""
+        }`}
+      >
+        <CardContent className="p-12 text-center">
+          <input {...getInputProps()} />
+          <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-base font-semibold">
+            {isDragActive ? "Drop files here" : "Drag and drop files"}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            or <button onClick={open}>click to browse</button>
+          </p>
+          <Badge variant="secondary" className="mt-4">
+            Max {maxFiles} files • Up to {formatBytes(maxFileSize)} each
+          </Badge>
+        </CardContent>
+      </Card>
+
+      {/* File list */}
+      {files.length > 0 && (
+        <div className="space-y-3">
+          {files.map((file) => (
+            <FileItem
+              key={file.name}
+              file={file}
+              onRemove={removeFile}
+              error={errors.find((e) => e.name === file.name)}
+              isUploaded={successes.includes(file.name)}
+              disabled={loading}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Upload button */}
+      {files.length > 0 && (
+        <Button
+          onClick={onUpload}
+          disabled={!canUpload}
+          size="lg"
+          className="w-full"
+        >
+          {loading ? (
+            <>Uploading {files.length} file(s)...</>
+          ) : isSuccess ? (
+            <>All files uploaded!</>
+          ) : (
+            <>Upload {files.length} file(s)</>
+          )}
+        </Button>
+      )}
+    </div>
+  );
+}
+```
+
+## File Validation
+
+The hook validates files on drop:
+
+```typescript
+// File type validation
+if (allowedMimeTypes.length > 0) {
+  const isValid = allowedMimeTypes.some((type) => {
+    if (type.endsWith("/*")) {
+      return file.type.startsWith(type.replace("/*", ""));
+    }
+    return file.type === type;
+  });
+}
+
+// File size validation
+if (file.size > maxFileSize) {
+  file.errors.push({
+    code: "file-too-large",
+    message: `File is larger than ${formatBytes(maxFileSize)}`,
+  });
+}
+
+// File count validation
+if (files.length >= maxFiles) {
+  file.errors.push({
+    code: "too-many-files",
+    message: `Maximum ${maxFiles} files allowed`,
+  });
+}
+```
+
+## Upload Process
+
+The upload happens in two steps:
+
+### 1. Generate Upload URL
+
+```typescript
+const uploadUrl = await generateUploadUrl();
+```
+
+### 2. Upload to Convex Storage
+
+```typescript
+const response = await fetch(uploadUrl, {
+  method: "POST",
+  headers: { "Content-Type": file.type },
+  body: file,
+});
+
+const { storageId } = await response.json();
+```
+
+### 3. Save File Metadata
+
+```typescript
+await saveFile({
+  storageId,
+  name: file.name,
+  type: file.type,
+  size: file.size,
+});
+```
+
+## Backend Implementation
+
+### File Schema
+
+```typescript title="convex/schema.ts"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  files: defineTable({
+    storageId: v.id("_storage"),
+    userId: v.optional(v.id("users")),
+    sessionId: v.optional(v.string()),
+    name: v.string(),
+    type: v.string(),
+    size: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_session", ["sessionId"]),
+});
+```
+
+### File Functions
+
+```typescript title="convex/files.ts"
+import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+// Generate upload URL
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Save file metadata
+export const saveFile = mutation({
+  args: {
+    storageId: v.id("_storage"),
+    name: v.string(),
+    type: v.string(),
+    size: v.number(),
+    sessionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Validate file size
+    if (args.size > MAX_FILE_SIZE) {
+      throw new Error(`File too large. Maximum ${MAX_FILE_SIZE / 1024 / 1024}MB.`);
+    }
+
+    // Get user ID if authenticated
+    let userId = undefined;
+    try {
+      const { getAuthUserId } = await import("@convex-dev/auth/server");
+      userId = (await getAuthUserId(ctx)) ?? undefined;
+    } catch {
+      // Auth not configured
+    }
+
+    return await ctx.db.insert("files", {
+      storageId: args.storageId,
+      userId,
+      sessionId: args.sessionId,
+      name: args.name.trim().slice(0, 255),
+      type: args.type,
+      size: args.size,
+    });
+  },
+});
+
+// Get download URL
+export const getUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+// List user's files
+export const list = query({
+  args: { sessionId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    let userId = null;
+    try {
+      const { getAuthUserId } = await import("@convex-dev/auth/server");
+      userId = await getAuthUserId(ctx);
+    } catch {}
+
+    let files;
+    if (userId) {
+      files = await ctx.db
+        .query("files")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+    } else if (args.sessionId) {
+      files = await ctx.db
+        .query("files")
+        .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+        .collect();
+    } else {
+      return [];
+    }
+
+    return await Promise.all(
+      files.map(async (file) => ({
+        ...file,
+        url: await ctx.storage.getUrl(file.storageId),
+      }))
+    );
+  },
+});
+
+// Delete file
+export const remove = mutation({
+  args: {
+    fileId: v.id("files"),
+    sessionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const file = await ctx.db.get(args.fileId);
+    if (!file) return null;
+
+    let userId = null;
+    try {
+      const { getAuthUserId } = await import("@convex-dev/auth/server");
+      userId = await getAuthUserId(ctx);
+    } catch {}
+
+    const canDelete =
+      !file.userId ||
+      file.userId === userId ||
+      (file.sessionId && file.sessionId === args.sessionId);
+
+    if (canDelete) {
+      await ctx.storage.delete(file.storageId);
+      await ctx.db.delete(args.fileId);
+    }
+
+    return null;
+  },
+});
+```
+
+## Features
+
+### Image Previews
+
+Automatic preview generation for images:
+
+```typescript
+if (file.type.startsWith("image/")) {
+  file.preview = URL.createObjectURL(file);
+}
+```
+
+### File Icons
+
+Different icons based on file type:
+
+```typescript
+function getFileIcon(type: string) {
+  if (type.startsWith("image/")) return ImageIcon;
+  if (type.startsWith("video/")) return FileVideoIcon;
+  if (type.startsWith("audio/")) return FileAudioIcon;
+  if (type.startsWith("text/")) return FileTextIcon;
+  return FileIcon;
+}
+```
+
+### Upload Progress
+
+Visual feedback during upload:
+
+- Loading spinner on upload button
+- Disabled state during upload
+- Success/error badges on files
+
+### Error Handling
+
+Granular error tracking:
+
+```typescript
+interface FileError {
+  name: string;
+  message: string;
+}
+
+// Errors tracked per file
+const errors: FileError[] = [
+  { name: "document.pdf", message: "File too large" },
+  { name: "image.png", message: "Upload failed" },
+];
+```
+
+## Common Patterns
+
+### Profile Picture Upload
+
+```tsx
+const upload = useConvexUpload({
+  allowedMimeTypes: ["image/jpeg", "image/png"],
+  maxFileSize: 2 * 1024 * 1024, // 2MB
+  maxFiles: 1,
+});
+
+return (
+  <div className="max-w-md">
+    <h2>Upload Profile Picture</h2>
+    <Dropzone upload={upload} />
+  </div>
+);
+```
+
+### Document Upload
+
+```tsx
+const upload = useConvexUpload({
+  allowedMimeTypes: ["application/pdf", "application/msword"],
+  maxFileSize: 10 * 1024 * 1024,
+  maxFiles: 5,
+});
+
+return <Dropzone upload={upload} className="max-w-3xl" />;
+```
+
+### Media Gallery
+
+```tsx
+const upload = useConvexUpload({
+  allowedMimeTypes: ["image/*", "video/*"],
+  maxFileSize: 50 * 1024 * 1024,
+  maxFiles: 10,
+});
+
+return (
+  <div>
+    <Dropzone upload={upload} />
+    {upload.isSuccess && (
+      <div className="mt-8">
+        <h3>Uploaded Files</h3>
+        <FileList />
+      </div>
+    )}
+  </div>
+);
+```
+
+### With Upload Callback
+
+```tsx
+const upload = useConvexUpload();
+
+const handleUpload = async () => {
+  await upload.onUpload();
+  
+  if (upload.isSuccess) {
+    console.log("All files uploaded!");
+    // Redirect or show success message
+  }
+};
+
+return (
+  <div>
+    <Dropzone upload={upload} />
+    <Button onClick={handleUpload}>Custom Upload</Button>
+  </div>
+);
+```
+
+## File Size Formatting
+
+The component includes a helper for displaying file sizes:
+
+```typescript
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+// Examples:
+formatBytes(1024);           // "1 KB"
+formatBytes(1048576);        // "1 MB"
+formatBytes(5242880);        // "5 MB"
+formatBytes(52428800);       // "50 MB"
+```
+
+## Security
+
+### File Size Limits
+
+Enforce maximum file size on both client and server:
+
+```typescript
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+```
+
+### MIME Type Validation
+
+Validate file types before upload:
+
+```typescript
+allowedMimeTypes: ["image/png", "image/jpeg"]
+```
+
+### User Association
+
+Files are associated with authenticated users or sessions:
+
+```typescript
+{
+  storageId: "...",
+  userId: "j1234567890",      // If authenticated
+  sessionId: "demo-abc-123",   // If demo mode
+}
+```
+
+## Styling
+
+Customize the dropzone appearance:
+
+```tsx
+<Dropzone
+  upload={upload}
+  className="border-2 border-dashed border-gray-300 rounded-lg"
+/>
+```
+
+The component uses shadcn/ui components and Tailwind CSS for styling.
+
+## Related
+
+- [Client Setup](/nextjs/client)
+- [Convex Storage Documentation](https://docs.convex.dev/file-storage)

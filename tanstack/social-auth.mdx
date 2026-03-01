@@ -1,0 +1,472 @@
+---
+title: Social Authentication (OAuth)
+description: OAuth authentication with GitHub and Google for TanStack Start using Convex Auth
+---
+
+## Overview
+
+Add social authentication to your TanStack Start app with support for GitHub and Google OAuth. Built on Convex Auth with automatic user profile creation, session management, and protected routes.
+
+## Features
+
+- GitHub OAuth integration
+- Google OAuth integration
+- Automatic user profile creation
+- Profile pictures from OAuth providers
+- Session management
+- Protected routes
+- Loading states
+- Error handling
+- Type-safe
+
+## Installation
+
+<Steps>
+  <Step title="Install the component">
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/social-auth-tanstack
+    ```
+  </Step>
+
+  <Step title="Configure OAuth providers">
+    Set up OAuth apps in provider dashboards:
+
+    **GitHub:**
+    1. Go to GitHub Settings → Developer settings → OAuth Apps
+    2. Create new OAuth app
+    3. Set callback URL: `https://YOUR_CONVEX_URL/api/auth/callback/github`
+
+    **Google:**
+    1. Go to Google Cloud Console → APIs & Services → Credentials
+    2. Create OAuth 2.0 Client ID
+    3. Add authorized redirect URI: `https://YOUR_CONVEX_URL/api/auth/callback/google`
+  </Step>
+
+  <Step title="Add environment variables">
+    In Convex dashboard (Settings → Environment Variables):
+    ```bash
+    AUTH_GITHUB_ID=your_github_client_id
+    AUTH_GITHUB_SECRET=your_github_client_secret
+    AUTH_GOOGLE_ID=your_google_client_id
+    AUTH_GOOGLE_SECRET=your_google_client_secret
+    ```
+  </Step>
+
+  <Step title="Start development">
+    ```bash
+    npx convex dev
+    ```
+  </Step>
+</Steps>
+
+## What Gets Installed
+
+### Components
+
+- `login-form.tsx` - Social login buttons for GitHub and Google
+- `logout-button.tsx` - Sign out button
+
+### Routes
+
+- `routes/auth/login.tsx` - Login page with social options
+- `routes/_protected/index.tsx` - Example protected route
+
+### Backend (Convex)
+
+- `convex/schema.ts` - User schema with OAuth fields
+- `convex/auth.ts` - Auth query endpoints
+- `convex/auth.config.ts` - OAuth provider configuration
+- `convex/users.ts` - User profile queries
+- `convex/http.ts` - OAuth callback handlers
+
+## Environment Variables
+
+### Required (Convex Dashboard)
+
+<ParamField path="AUTH_GITHUB_ID" type="string">
+  GitHub OAuth App Client ID
+</ParamField>
+
+<ParamField path="AUTH_GITHUB_SECRET" type="string">
+  GitHub OAuth App Client Secret
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_ID" type="string">
+  Google OAuth Client ID
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_SECRET" type="string">
+  Google OAuth Client Secret
+</ParamField>
+
+<Note>
+  At least one OAuth provider (GitHub or Google) must be configured for authentication to work.
+</Note>
+
+## Usage
+
+### Basic Social Login
+
+```tsx routes/auth/login.tsx
+import { SocialLoginForm } from "@/components/login-form";
+
+export default function LoginPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <SocialLoginForm />
+    </div>
+  );
+}
+```
+
+### Specify Providers
+
+Choose which OAuth providers to display:
+
+```tsx
+import { SocialLoginForm } from "@/components/login-form";
+
+// GitHub only
+<SocialLoginForm providers={["github"]} />
+
+// Google only
+<SocialLoginForm providers={["google"]} />
+
+// Both (default)
+<SocialLoginForm providers={["github", "google"]} />
+```
+
+### Protected Routes
+
+Check authentication before rendering protected content:
+
+```tsx routes/_protected.tsx
+import { createFileRoute, redirect, Outlet } from "@tanstack/react-router";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export const Route = createFileRoute("/_protected")(
+  beforeLoad: async ({ context }) => {
+    const user = await context.queryClient.fetchQuery(
+      convexQuery(api.users.current, {})
+    );
+    
+    if (!user) {
+      throw redirect({ to: "/auth/login" });
+    }
+  },
+  component: ProtectedLayout,
+});
+
+function ProtectedLayout() {
+  return <Outlet />;
+}
+```
+
+### Display User Info
+
+Access authenticated user data:
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function UserProfile() {
+  const { data: user } = useQuery(
+    convexQuery(api.users.current, {})
+  );
+
+  if (!user) return null;
+
+  return (
+    <div>
+      <img src={user.image} alt={user.name} />
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+```
+
+### Sign Out
+
+```tsx
+import { LogoutButton } from "@/components/logout-button";
+
+export function Header() {
+  return (
+    <header>
+      <h1>My App</h1>
+      <LogoutButton />
+    </header>
+  );
+}
+```
+
+## OAuth Flow
+
+<Steps>
+  <Step title="User Clicks Provider Button">
+    User clicks "Continue with GitHub" or "Continue with Google"
+  </Step>
+
+  <Step title="Redirect to Provider">
+    User is redirected to the OAuth provider's authorization page
+  </Step>
+
+  <Step title="User Grants Permission">
+    User authorizes your app to access their profile
+  </Step>
+
+  <Step title="Callback to Convex">
+    Provider redirects to Convex with authorization code
+  </Step>
+
+  <Step title="Profile Creation">
+    Convex creates or updates user profile with OAuth data
+  </Step>
+
+  <Step title="Session Created">
+    User is signed in and redirected to the app
+  </Step>
+</Steps>
+
+## API Reference
+
+### SocialLoginForm Props
+
+```typescript
+interface SocialLoginFormProps {
+  providers?: Array<"github" | "google">;
+}
+```
+
+<ParamField path="providers" type="array" default='["github", "google"]'>
+  Array of OAuth providers to display. Available options: `"github"`, `"google"`
+</ParamField>
+
+**Example:**
+
+```tsx
+// Show only GitHub
+<SocialLoginForm providers={["github"]} />
+
+// Show only Google
+<SocialLoginForm providers={["google"]} />
+
+// Show both (default)
+<SocialLoginForm />
+```
+
+### Auth Actions
+
+Use Convex Auth hooks for programmatic authentication:
+
+```tsx
+import { useAuthActions } from "@convex-dev/auth/react";
+
+function LoginButton() {
+  const { signIn } = useAuthActions();
+
+  return (
+    <button onClick={() => signIn("github")}>
+      Sign in with GitHub
+    </button>
+  );
+}
+```
+
+### Check Auth Status
+
+```tsx
+import { Authenticated, Unauthenticated } from "convex/react";
+
+function AuthStatus() {
+  return (
+    <>
+      <Authenticated>
+        <p>You are signed in</p>
+      </Authenticated>
+      <Unauthenticated>
+        <p>You are signed out</p>
+      </Unauthenticated>
+    </>
+  );
+}
+```
+
+## Backend Implementation
+
+### User Schema
+
+OAuth providers populate these fields:
+
+```typescript convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  ...authTables,
+  users: defineTable({
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+  }),
+});
+```
+
+### User Queries
+
+Access user data securely:
+
+```typescript convex/users.ts
+import { query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    return await ctx.db.get(userId);
+  },
+});
+```
+
+## Customization
+
+### Custom Button Styles
+
+Modify the login form component:
+
+```tsx
+<Button
+  variant="outline"
+  size="lg"
+  className="w-full bg-black text-white hover:bg-gray-800" // Custom styles
+  onClick={() => handleSocialLogin("github")}
+>
+  <GitHubIcon className="mr-2 h-5 w-5" />
+  Continue with GitHub
+</Button>
+```
+
+### Add More Providers
+
+Convex Auth supports additional OAuth providers. Update `convex/auth.config.ts`:
+
+```typescript
+import { AuthConfig } from "convex/server";
+
+export default {
+  providers: [
+    {
+      domain: process.env.CONVEX_SITE_URL!,
+      applicationID: "convex",
+    },
+    // Add Twitter, Discord, etc.
+  ],
+} satisfies AuthConfig;
+```
+
+### Custom Redirect
+
+Change where users go after login:
+
+```tsx
+const handleSocialLogin = async (provider: "github" | "google") => {
+  await signIn(provider);
+  navigate({ to: "/dashboard" }); // Custom destination
+};
+```
+
+## Getting OAuth Credentials
+
+### GitHub
+
+<Steps>
+  <Step title="Go to GitHub Settings">
+    Navigate to Settings → Developer settings → OAuth Apps
+  </Step>
+
+  <Step title="Create New OAuth App">
+    Click "New OAuth App"
+  </Step>
+
+  <Step title="Fill in Details">
+    - Application name: Your app name
+    - Homepage URL: Your app URL
+    - Callback URL: `https://YOUR_CONVEX_URL/api/auth/callback/github`
+  </Step>
+
+  <Step title="Get Credentials">
+    Copy the Client ID and generate a Client Secret
+  </Step>
+</Steps>
+
+### Google
+
+<Steps>
+  <Step title="Go to Google Cloud Console">
+    Visit [Google Cloud Console](https://console.cloud.google.com)
+  </Step>
+
+  <Step title="Create Project">
+    Create a new project or select existing
+  </Step>
+
+  <Step title="Enable Google+ API">
+    APIs & Services → Enable APIs and Services → Google+ API
+  </Step>
+
+  <Step title="Create OAuth Credentials">
+    APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
+  </Step>
+
+  <Step title="Configure OAuth Consent">
+    Fill in application name and support email
+  </Step>
+
+  <Step title="Add Redirect URI">
+    `https://YOUR_CONVEX_URL/api/auth/callback/google`
+  </Step>
+
+  <Step title="Get Credentials">
+    Copy the Client ID and Client Secret
+  </Step>
+</Steps>
+
+## Security
+
+- OAuth tokens are never exposed to the client
+- Callback URLs must be configured in provider dashboards
+- State parameter prevents CSRF attacks
+- Sessions are HTTP-only cookies
+- Tokens expire automatically
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Redirect URI mismatch">
+    Ensure the callback URL in your OAuth provider settings exactly matches:
+    `https://YOUR_CONVEX_URL/api/auth/callback/{provider}`
+  </Accordion>
+
+  <Accordion title="Cannot read properties of undefined (reading 'signIn')">
+    Make sure your app is wrapped with `ConvexClientProvider`.
+  </Accordion>
+
+  <Accordion title="OAuth provider not configured">
+    Verify environment variables are set in the Convex dashboard, not your local `.env` file.
+  </Accordion>
+
+  <Accordion title="User data not showing">
+    Check that your OAuth app has permissions to access user email and profile.
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [Password-Based Auth](/tanstack/password-based-auth) - Add email/password authentication
+- [Current User Avatar](/tanstack/current-user-avatar) - Display authenticated user
+- [Convex Client Setup](/tanstack/client) - Configure Convex with TanStack Start

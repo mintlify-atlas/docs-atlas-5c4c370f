@@ -1,0 +1,475 @@
+---
+title: Current User Avatar
+description: Reactive avatar component displaying the authenticated user's profile picture and name
+---
+
+## Overview
+
+A reactive avatar component that displays the current authenticated user's image and name. Automatically updates when user data changes through Convex live queries. Shows a loading skeleton while fetching and displays user initials as a fallback.
+
+## Features
+
+- Displays user profile picture
+- Shows user initials as fallback
+- Loading skeleton state
+- Reactive - updates automatically
+- Three size variants (sm, md, lg)
+- Customizable styling
+- TypeScript support
+- Works with Convex Auth
+
+## Installation
+
+<Steps>
+  <Step title="Install the component">
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/current-user-avatar-tanstack
+    ```
+  </Step>
+
+  <Step title="Prerequisites">
+    This component requires Convex Auth to be configured. Install authentication first:
+    ```bash
+    npx shadcn@latest add https://convex-ui.vercel.app/r/password-based-auth-tanstack
+    # or
+    npx shadcn@latest add https://convex-ui.vercel.app/r/social-auth-tanstack
+    ```
+  </Step>
+
+  <Step title="Start Convex">
+    ```bash
+    npx convex dev
+    ```
+  </Step>
+</Steps>
+
+## What Gets Installed
+
+### Components
+
+- `current-user-avatar.tsx` - Main avatar component
+
+### Hooks
+
+- `use-current-user-image.ts` - Hook to get user's profile image
+- `use-current-user-name.ts` - Hook to get user's name
+
+### Backend (Convex)
+
+- `convex/users.ts` - User query functions
+- `convex/schema.ts` - User database schema
+
+## Usage
+
+### Basic Usage
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+
+export function Header() {
+  return (
+    <header>
+      <h1>My App</h1>
+      <CurrentUserAvatar />
+    </header>
+  );
+}
+```
+
+### Size Variants
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+
+// Small (32px)
+<CurrentUserAvatar size="sm" />
+
+// Medium (40px) - default
+<CurrentUserAvatar size="md" />
+
+// Large (48px)
+<CurrentUserAvatar size="lg" />
+```
+
+### Custom Styling
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+
+<CurrentUserAvatar 
+  size="lg"
+  className="ring-2 ring-primary ring-offset-2"
+/>
+```
+
+### Hide When Not Authenticated
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+
+<CurrentUserAvatar showFallback={false} />
+```
+
+This will render `null` if the user is not authenticated, instead of showing a "?" fallback.
+
+### With Dropdown Menu
+
+Combine with a dropdown for user actions:
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuthActions } from "@convex-dev/auth/react";
+
+export function UserMenu() {
+  const { signOut } = useAuthActions();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <CurrentUserAvatar size="md" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
+          Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+          Settings
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => signOut()}>
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+```
+
+### In Navigation
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+
+export function Navigation() {
+  const userName = useCurrentUserName();
+
+  return (
+    <nav className="flex items-center gap-4">
+      <Link to="/">Home</Link>
+      <Link to="/dashboard">Dashboard</Link>
+      <div className="ml-auto flex items-center gap-3">
+        <span className="text-sm text-muted-foreground">
+          {userName ?? "Guest"}
+        </span>
+        <CurrentUserAvatar size="sm" />
+      </div>
+    </nav>
+  );
+}
+```
+
+## API Reference
+
+### CurrentUserAvatar Props
+
+```typescript
+interface CurrentUserAvatarProps {
+  size?: "sm" | "md" | "lg";
+  className?: string;
+  showFallback?: boolean;
+}
+```
+
+<ParamField path="size" type="string" default="md">
+  Size variant for the avatar:
+  - `"sm"` - 32px (h-8 w-8)
+  - `"md"` - 40px (h-10 w-10) 
+  - `"lg"` - 48px (h-12 w-12)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the avatar
+</ParamField>
+
+<ParamField path="showFallback" type="boolean" default={true}>
+  Whether to show a fallback "?" when user is not authenticated. If `false`, renders `null` when no user.
+</ParamField>
+
+### Hooks
+
+#### useCurrentUserImage
+
+Get the current user's profile image URL:
+
+```tsx
+import { useCurrentUserImage } from "@/hooks/use-current-user-image";
+
+function MyComponent() {
+  const image = useCurrentUserImage();
+  // image: string | null | undefined
+  // undefined = loading, null = no user/no image, string = image URL
+
+  if (image === undefined) return <div>Loading...</div>;
+  if (!image) return <div>No image</div>;
+
+  return <img src={image} alt="User" />;
+}
+```
+
+#### useCurrentUserName
+
+Get the current user's name:
+
+```tsx
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+
+function MyComponent() {
+  const name = useCurrentUserName();
+  // name: string | null | undefined
+  // undefined = loading, null = no user, string = user name
+
+  return <div>Hello, {name ?? "Guest"}!</div>;
+}
+```
+
+## Backend Implementation
+
+### User Query
+
+The component uses a reactive Convex query:
+
+```typescript convex/users.ts
+import { query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { v } from "convex/values";
+
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    return await ctx.db.get(userId);
+  },
+});
+```
+
+This query:
+- Returns the current authenticated user's profile
+- Returns `null` if not authenticated
+- Is reactive - automatically updates when user data changes
+- Only exposes the user's own data for security
+
+### User Schema
+
+```typescript convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    image: v.optional(v.string()),
+    // ... other fields
+  }),
+});
+```
+
+## States
+
+### Loading State
+
+Shows a skeleton while fetching user data:
+
+```tsx
+// Automatically handled by the component
+<CurrentUserAvatar /> // Shows skeleton when loading
+```
+
+### Not Authenticated
+
+Shows "?" fallback by default:
+
+```tsx
+// User not logged in
+<CurrentUserAvatar /> // Shows "?" in avatar
+
+// Or hide entirely
+<CurrentUserAvatar showFallback={false} /> // Renders null
+```
+
+### No Profile Image
+
+Shows user initials when no image is set:
+
+```tsx
+// User: { name: "John Doe", image: null }
+<CurrentUserAvatar /> // Shows "JD"
+
+// User: { name: "Alice", image: null }
+<CurrentUserAvatar /> // Shows "A"
+```
+
+### With Profile Image
+
+Displays the user's image:
+
+```tsx
+// User: { name: "John Doe", image: "https://..." }
+<CurrentUserAvatar /> // Shows profile picture
+```
+
+## Customization
+
+### Custom Initials Logic
+
+Modify the `getInitials` function in the component:
+
+```tsx
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  
+  // Custom: Use first letter only
+  return name[0].toUpperCase();
+  
+  // Custom: Use full first name
+  return name.split(" ")[0].toUpperCase();
+}
+```
+
+### Custom Sizes
+
+Add more size variants:
+
+```tsx
+const sizeClasses = {
+  xs: "h-6 w-6 text-xs",
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-12 w-12 text-base",
+  xl: "h-16 w-16 text-lg",
+};
+```
+
+### Custom Fallback
+
+Change what shows when there's no image:
+
+```tsx
+<AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500">
+  {getInitials(name)}
+</AvatarFallback>
+```
+
+## Examples
+
+### Profile Card
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery, api } from "@/lib/convex/server";
+
+export function ProfileCard() {
+  const { data: user } = useQuery(convexQuery(api.users.current, {}));
+  const name = useCurrentUserName();
+
+  return (
+    <div className="flex items-center gap-4 p-4 rounded-lg border">
+      <CurrentUserAvatar size="lg" />
+      <div>
+        <h3 className="font-semibold">{name ?? "Anonymous"}</h3>
+        <p className="text-sm text-muted-foreground">{user?.email}</p>
+      </div>
+    </div>
+  );
+}
+```
+
+### Comment Author
+
+```tsx
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+
+export function CommentForm() {
+  const userName = useCurrentUserName();
+
+  return (
+    <div className="flex gap-3">
+      <CurrentUserAvatar size="sm" />
+      <div className="flex-1">
+        <p className="text-sm font-medium mb-2">{userName}</p>
+        <textarea 
+          placeholder="Write a comment..."
+          className="w-full p-2 border rounded"
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+### User List
+
+```tsx
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+function getInitials(name: string) {
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+export function UserList({ users }: { users: Array<{ name: string; image?: string }> }) {
+  return (
+    <div className="space-y-2">
+      {users.map((user) => (
+        <div key={user.name} className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={user.image} />
+            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+          </Avatar>
+          <span>{user.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Avatar always shows loading skeleton">
+    - Ensure Convex is running (`npx convex dev`)
+    - Check that `ConvexClientProvider` wraps your app
+    - Verify the user query works in Convex dashboard
+  </Accordion>
+
+  <Accordion title="Image not displaying">
+    - Check that the image URL is valid and accessible
+    - Verify the user has an `image` field in the database
+    - Check browser console for CORS errors
+  </Accordion>
+
+  <Accordion title="Shows '?' instead of initials">
+    - Ensure the user has a `name` field in the database
+    - Check that authentication is working
+  </Accordion>
+
+  <Accordion title="TypeScript errors on hooks">
+    Run `npx convex dev` to generate types from your schema.
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [Password-Based Auth](/tanstack/password-based-auth) - Set up authentication
+- [Social Auth](/tanstack/social-auth) - OAuth profile images
+- [Realtime Avatar Stack](/tanstack/realtime-avatar-stack) - Show multiple users

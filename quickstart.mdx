@@ -1,80 +1,328 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get up and running with Convex UI in under 5 minutes. Install shadcn/ui, initialize Convex, then add your first component.
 ---
 
-## Get started in three steps
+<Note>
+  **Three steps to production:** Set up shadcn/ui, initialize Convex, add a component. You'll have a working app in minutes.
+</Note>
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- **Node.js 18+** installed on your machine
+- A **React project** (Next.js, Vite, TanStack Start, or React Router)
+- Basic familiarity with React and TypeScript
 
-### Step 2: Deploy your changes
+<Tip>
+  Starting from scratch? The shadcn/ui setup will create a new project for you.
+</Tip>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Step 1: Set up shadcn/ui
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+Convex UI components are built on shadcn/ui. Choose your framework and follow the official setup guide:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+<CardGroup cols={3}>
+  <Card title="Next.js" icon="react" href="https://ui.shadcn.com/docs/installation/next">
+    Recommended for full-stack apps with SSR
+  </Card>
+  <Card title="Vite" icon="bolt" href="https://ui.shadcn.com/docs/installation/vite">
+    Fast development for SPAs and client-side apps
+  </Card>
+  <Card title="TanStack Start" icon="layer-group" href="https://ui.shadcn.com/docs/installation/tanstack">
+    Modern routing with React Router foundation
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+<Info>
+  **Already using shadcn/ui?** Skip to Step 2. Convex UI works with your existing setup.
+</Info>
+
+The shadcn/ui setup will:
+- Configure Tailwind CSS
+- Set up your `components.json` config file
+- Install base UI dependencies
+- Create your component directory structure
+
+## Step 2: Initialize Convex
+
+Install Convex and initialize your project:
+
+<CodeGroup>
+```bash npm
+npm install convex @convex-dev/auth
+npx convex dev
+```
+
+```bash pnpm
+pnpm add convex @convex-dev/auth
+pnpm convex dev
+```
+
+```bash yarn
+yarn add convex @convex-dev/auth
+yarn convex dev
+```
+</CodeGroup>
+
+<Info>
+  **No account required** for local development. Convex runs entirely on your machine until you're ready to deploy.
+</Info>
+
+The `convex dev` command will:
+
+<Steps>
+  <Step title="Create the convex directory">
+    Initializes `convex/` with starter files and schema
+  </Step>
+  <Step title="Generate environment variables">
+    Adds `NEXT_PUBLIC_CONVEX_URL` (or `VITE_CONVEX_URL`) to your `.env.local` file
+  </Step>
+  <Step title="Start the dev server">
+    Launches a local Convex backend with hot reload
+  </Step>
+  <Step title="Deploy functions automatically">
+    Watches for changes and redeploys instantly
+  </Step>
+</Steps>
+
+### What gets created
+
+After initialization, your project will have:
+
+```text
+your-project/
+├── convex/
+│   ├── _generated/         # Auto-generated TypeScript types
+│   └── schema.ts           # Database schema (initially empty)
+├── .env.local              # Convex deployment URL
+└── convex.json             # Convex configuration
+```
+
+<Tip>
+  Keep `npx convex dev` running while you develop. It provides hot reload for backend functions.
+</Tip>
+
+## Step 3: Add your first component
+
+Now you can add any Convex UI component. Let's start with realtime chat:
+
+<Tabs>
+  <Tab title="Next.js">
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/realtime-chat-nextjs"
+    ```
+  </Tab>
+  <Tab title="React (Vite)">
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/realtime-chat-react"
+    ```
+  </Tab>
+  <Tab title="TanStack Start">
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/realtime-chat-tanstack"
+    ```
+  </Tab>
+</Tabs>
+
+This installs:
+
+<CardGroup cols={2}>
+  <Card title="Frontend" icon="browser">
+    - `components/realtime-chat.tsx`
+    - `components/chat-message.tsx`
+    - `hooks/use-realtime-chat.tsx`
+  </Card>
+  <Card title="Backend" icon="server">
+    - `convex/schema.ts` (messages table)
+    - `convex/messages.ts` (queries & mutations)
+  </Card>
+</CardGroup>
+
+## Step 4: Use the component
+
+Import and use the chat component in your app:
+
+<Tabs>
+  <Tab title="Next.js">
+    ```tsx app/page.tsx
+    import { RealtimeChat } from "@/components/realtime-chat";
+    
+    export default function Home() {
+      return (
+        <main className="container mx-auto p-8">
+          <RealtimeChat 
+            roomName="general" 
+            username="Alice" 
+          />
+        </main>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="React (Vite)">
+    ```tsx src/App.tsx
+    import { RealtimeChat } from "@/components/realtime-chat";
+    
+    function App() {
+      return (
+        <div className="container mx-auto p-8">
+          <RealtimeChat 
+            roomName="general" 
+            username="Alice" 
+          />
+        </div>
+      );
+    }
+    
+    export default App;
+    ```
+  </Tab>
+  <Tab title="TanStack Start">
+    ```tsx routes/index.tsx
+    import { RealtimeChat } from "@/components/realtime-chat";
+    
+    export default function IndexRoute() {
+      return (
+        <div className="container mx-auto p-8">
+          <RealtimeChat 
+            roomName="general" 
+            username="Alice" 
+          />
+        </div>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+  Open multiple browser windows to see messages sync in realtime!
+</Info>
+
+## Add authentication
+
+For a more complete app, add password-based authentication:
+
+<Tabs>
+  <Tab title="Next.js">
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/password-based-auth-nextjs"
+    ```
+  </Tab>
+  <Tab title="React (Vite)">
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/password-based-auth-react"
+    ```
+  </Tab>
+  <Tab title="TanStack Start">
+    ```bash
+    npx shadcn@latest add "https://convex-ui.vercel.app/r/password-based-auth-tanstack"
+    ```
+  </Tab>
+</Tabs>
+
+This adds complete authentication flows:
+
+- ✅ Login form with email/password
+- ✅ Signup with validation
+- ✅ Password reset flow
+- ✅ Protected route middleware
+- ✅ User session management
+- ✅ Convex Auth configuration
+
+### Configure email provider
+
+For password reset emails, configure Resend in the Convex dashboard:
+
+<Steps>
+  <Step title="Get a Resend API key">
+    Sign up at [resend.com](https://resend.com) and create an API key
+  </Step>
+  <Step title="Add to Convex dashboard">
+    Go to your project settings → Environment Variables
+  </Step>
+  <Step title="Set required variables">
+    ```bash
+    AUTH_RESEND_KEY=re_...
+    AUTH_EMAIL_FROM=noreply@yourdomain.com
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  OAuth providers (GitHub, Google) require additional setup. See the authentication docs for callback URL configuration.
+</Warning>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Explore components" icon="grid" href="#">
+    Browse all available components including file uploads, cursors, and presence
+  </Card>
+  <Card title="Customize styling" icon="palette" href="#">
+    Modify Tailwind classes or update your theme in `components.json`
+  </Card>
+  <Card title="Extend backend functions" icon="code" href="https://docs.convex.dev">
+    Learn how to write custom queries and mutations in Convex
+  </Card>
+  <Card title="Deploy to production" icon="rocket" href="https://docs.convex.dev/production">
+    Push your app live with `npx convex deploy`
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Components not installing correctly">
+    Try deleting your `components.json` file and running the shadcn/ui init command again for your framework. This resets your configuration to the latest defaults.
+
+    ```bash
+    rm components.json
+    npx shadcn@latest init
+    ```
+  </Accordion>
+
+  <Accordion title="Convex dev server not starting">
+    Make sure you have Node.js 18+ installed:
+
+    ```bash
+    node --version
+    ```
+
+    If you're behind a firewall, you may need to configure proxy settings. Check the [Convex troubleshooting guide](https://docs.convex.dev/production/hosting/hosting-with-a-reverse-proxy).
+  </Accordion>
+
+  <Accordion title="TypeScript errors in generated files">
+    Restart your TypeScript server in VS Code:
+
+    - Press `Cmd/Ctrl + Shift + P`
+    - Type "TypeScript: Restart TS Server"
+    - Press Enter
+
+    The `_generated` folder updates automatically when `convex dev` is running.
+  </Accordion>
+
+  <Accordion title="Environment variables not working">
+    Make sure your `.env.local` file has the correct variable names:
+
+    **Next.js:**
+    ```bash
+    NEXT_PUBLIC_CONVEX_URL=https://...
+    CONVEX_DEPLOYMENT=dev:...
+    ```
+
+    **Vite, TanStack, React Router:**
+    ```bash
+    VITE_CONVEX_URL=https://...
+    CONVEX_DEPLOYMENT=dev:...
+    ```
+
+    Restart your dev server after changing environment variables.
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+  Still having issues? Check the [FAQ](/faq) or visit the [Convex Discord](https://convex.dev/community) for help.
+</Info>

@@ -1,0 +1,405 @@
+---
+title: "Social Authentication"
+description: "OAuth authentication with GitHub and Google for Next.js applications"
+---
+
+## Overview
+
+Social authentication (OAuth) integration for Next.js with Convex Auth. Supports:
+
+- GitHub OAuth login
+- Google OAuth login
+- Protected routes
+- User session management
+
+## Installation
+
+```bash
+npx @convex-dev/shadcn add convex/social-auth-nextjs
+```
+
+This installs:
+
+- Social login form component
+- Logout button
+- Protected route example
+- Complete Convex backend with auth
+- Convex client and provider
+
+## Post-Install Setup
+
+<Steps>
+
+<Step title="Start Convex Development Server">
+
+```bash
+npx convex dev
+```
+
+This creates your deployment and provides the deployment URL.
+
+</Step>
+
+<Step title="Configure Environment Variables">
+
+Add to `.env.local`:
+
+```bash title=".env.local"
+NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
+CONVEX_DEPLOYMENT=your-deployment-name
+```
+
+</Step>
+
+<Step title="Set Up OAuth Providers">
+
+**For GitHub:**
+
+1. Go to GitHub Settings > Developer settings > OAuth Apps
+2. Create a new OAuth App
+3. Set Authorization callback URL to: `https://<your-convex-url>/api/auth/callback/github`
+4. Get Client ID and Client Secret
+
+**For Google:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select existing
+3. Enable Google+ API
+4. Create OAuth 2.0 credentials
+5. Add authorized redirect URI: `https://<your-convex-url>/api/auth/callback/google`
+6. Get Client ID and Client Secret
+
+Add credentials to Convex dashboard (Settings > Environment Variables):
+
+```bash
+AUTH_GITHUB_ID=your-github-client-id
+AUTH_GITHUB_SECRET=your-github-client-secret
+
+AUTH_GOOGLE_ID=your-google-client-id
+AUTH_GOOGLE_SECRET=your-google-client-secret
+```
+
+<Warning>
+At least one OAuth provider must be configured for authentication to work.
+</Warning>
+
+</Step>
+
+<Step title="Wrap App with Provider">
+
+```tsx title="app/layout.tsx"
+import { ConvexClientProvider } from "@/lib/convex/provider";
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ConvexClientProvider>{children}</ConvexClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+</Step>
+
+</Steps>
+
+## Components
+
+### SocialLoginForm
+
+Displays OAuth provider buttons:
+
+```tsx title="app/auth/login/page.tsx"
+import { SocialLoginForm } from "@/components/login-form";
+
+export default function LoginPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <SocialLoginForm />
+    </div>
+  );
+}
+```
+
+**Props:**
+
+<ParamField path="providers" type="Provider[]" default="['github', 'google']">
+  Array of OAuth providers to display. Supported values: `'github'`, `'google'`
+</ParamField>
+
+**Example with single provider:**
+
+```tsx
+<SocialLoginForm providers={["github"]} />
+```
+
+### Component Source
+
+The component includes provider-specific icons and handles OAuth flow:
+
+```tsx title="components/login-form.tsx"
+"use client";
+
+import { useAuthActions } from "@convex-dev/auth/react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+
+type Provider = "github" | "google";
+
+interface SocialLoginFormProps {
+  providers?: Provider[];
+}
+
+export function SocialLoginForm({
+  providers = ["github", "google"],
+}: SocialLoginFormProps) {
+  const { signIn } = useAuthActions();
+  const [error, setError] = useState<string | null>(null);
+  const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
+
+  const handleSocialLogin = async (provider: Provider) => {
+    setError(null);
+    setLoadingProvider(provider);
+
+    try {
+      await signIn(provider);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Failed to sign in with ${provider}`,
+      );
+      setLoadingProvider(null);
+    }
+  };
+
+  // Render provider buttons...
+}
+```
+
+### LogoutButton
+
+Simple logout functionality:
+
+```tsx
+import { LogoutButton } from "@/components/logout-button";
+
+export function Header() {
+  return (
+    <header>
+      <nav>
+        <LogoutButton />
+      </nav>
+    </header>
+  );
+}
+```
+
+## Authentication Flow
+
+<Steps>
+
+<Step title="User Clicks OAuth Button">
+
+User selects GitHub or Google login.
+
+</Step>
+
+<Step title="Redirect to Provider">
+
+User is redirected to the OAuth provider's login page.
+
+</Step>
+
+<Step title="User Authorizes">
+
+User grants permissions to your application.
+
+</Step>
+
+<Step title="Callback Processing">
+
+Provider redirects back to your Convex callback URL with authorization code.
+
+</Step>
+
+<Step title="Session Created">
+
+Convex Auth exchanges the code for user information and creates a session.
+
+</Step>
+
+<Step title="User Redirected">
+
+User is redirected back to your application, now authenticated.
+
+</Step>
+
+</Steps>
+
+## Backend Configuration
+
+Auth is configured in `convex/auth.ts`:
+
+```typescript title="convex/auth.ts"
+import { convexAuth } from "@convex-dev/auth/server";
+import GitHub from "@auth/core/providers/github";
+import Google from "@auth/core/providers/google";
+
+// Build providers list dynamically
+const providers: any[] = [];
+
+if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
+  providers.push(GitHub);
+}
+
+if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
+  providers.push(Google);
+}
+
+export const { auth, signIn, signOut } = convexAuth({
+  providers,
+});
+```
+
+The system automatically includes only the configured providers.
+
+## User Data
+
+After authentication, user data is available via the `users.current` query:
+
+```tsx
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
+export function UserProfile() {
+  const user = useQuery(api.users.current);
+  
+  if (!user) return <div>Not logged in</div>;
+  
+  return (
+    <div>
+      <p>Name: {user.name}</p>
+      <p>Email: {user.email}</p>
+      <img src={user.image} alt={user.name} />
+    </div>
+  );
+}
+```
+
+**User object structure:**
+
+```typescript
+interface User {
+  _id: Id<"users">;
+  name?: string;
+  email?: string;
+  image?: string;
+  emailVerified?: boolean;
+}
+```
+
+## Protected Routes
+
+Protect routes with authentication checks:
+
+```tsx title="app/protected/page.tsx"
+import { redirect } from "next/navigation";
+import { fetchQuery } from "@/lib/convex/server";
+import { api } from "@/convex/_generated/api";
+
+export default async function ProtectedPage() {
+  const user = await fetchQuery(api.users.current);
+  
+  if (!user) {
+    redirect("/auth/login");
+  }
+  
+  return (
+    <div>
+      <h1>Welcome, {user.name}!</h1>
+      <p>This is protected content.</p>
+    </div>
+  );
+}
+```
+
+## Environment Variables
+
+### Client (.env.local)
+
+<ParamField path="NEXT_PUBLIC_CONVEX_URL" type="string" required>
+  Your Convex deployment URL
+</ParamField>
+
+<ParamField path="CONVEX_DEPLOYMENT" type="string" required>
+  Your Convex deployment name
+</ParamField>
+
+### Server (Convex Dashboard)
+
+<ParamField path="AUTH_GITHUB_ID" type="string">
+  GitHub OAuth client ID. Required if using GitHub authentication.
+</ParamField>
+
+<ParamField path="AUTH_GITHUB_SECRET" type="string">
+  GitHub OAuth client secret. Required if using GitHub authentication.
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_ID" type="string">
+  Google OAuth client ID. Required if using Google authentication.
+</ParamField>
+
+<ParamField path="AUTH_GOOGLE_SECRET" type="string">
+  Google OAuth client secret. Required if using Google authentication.
+</ParamField>
+
+## OAuth Callback URLs
+
+Configure these in your OAuth provider dashboards:
+
+**GitHub:**
+```
+https://<your-convex-url>/api/auth/callback/github
+```
+
+**Google:**
+```
+https://<your-convex-url>/api/auth/callback/google
+```
+
+Replace `<your-convex-url>` with your actual Convex deployment URL (from `NEXT_PUBLIC_CONVEX_URL`).
+
+## Customization
+
+### Custom Provider Icons
+
+The component includes built-in SVG icons for GitHub and Google. To customize:
+
+```tsx
+function CustomGitHubIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24">
+      {/* Your custom icon */}
+    </svg>
+  );
+}
+```
+
+### Styling
+
+The component uses shadcn/ui components. Customize via your theme:
+
+```tsx
+<SocialLoginForm className="max-w-sm" />
+```
+
+## Related
+
+- [Client Setup](/nextjs/client)
+- [Password-Based Authentication](/nextjs/password-based-auth)
+- [Current User Avatar](/nextjs/current-user-avatar)
