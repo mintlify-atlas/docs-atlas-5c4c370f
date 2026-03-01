@@ -1,0 +1,122 @@
+{
+  "projectType": "frontend",
+  "projectName": "Convex UI",
+  "projectDescription": "A collection of beautifully designed, accessible UI components for building applications with Convex, built on top of shadcn/ui design patterns.",
+  "theme": "palm",
+  "primaryColor": "#F97316",
+  "lightColor": "#FED7AA",
+  "darkColor": "#EA580C",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "faq"
+            ]
+          },
+          {
+            "group": "Next.js Components",
+            "pages": [
+              "nextjs/client",
+              "nextjs/password-based-auth",
+              "nextjs/social-auth",
+              "nextjs/current-user-avatar",
+              "nextjs/realtime-chat",
+              "nextjs/realtime-cursor",
+              "nextjs/realtime-avatar-stack",
+              "nextjs/dropzone"
+            ]
+          },
+          {
+            "group": "React Components",
+            "pages": [
+              "react/client",
+              "react/password-based-auth",
+              "react/social-auth",
+              "react/current-user-avatar",
+              "react/realtime-chat",
+              "react/realtime-cursor",
+              "react/realtime-avatar-stack",
+              "react/dropzone"
+            ]
+          },
+          {
+            "group": "TanStack Components",
+            "pages": [
+              "tanstack/client",
+              "tanstack/password-based-auth",
+              "tanstack/social-auth",
+              "tanstack/current-user-avatar",
+              "tanstack/realtime-chat",
+              "tanstack/realtime-cursor",
+              "tanstack/realtime-avatar-stack",
+              "tanstack/dropzone"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Components",
+            "pages": [
+              "api/components/authentication",
+              "api/components/realtime",
+              "api/components/storage",
+              "api/components/user"
+            ]
+          },
+          {
+            "group": "Convex Backend",
+            "pages": [
+              "api/convex/schema",
+              "api/convex/auth",
+              "api/convex/queries",
+              "api/convex/mutations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Realtime components powered by Convex live queries",
+    "Password-based and social authentication with Convex Auth",
+    "File storage with drag-and-drop uploads",
+    "Framework support for Next.js, React, TanStack Start, and React Router",
+    "shadcn/ui compatible components",
+    "Copy-paste installation with full TypeScript support"
+  ],
+  "publicApiSurface": [
+    "password-based-auth-nextjs",
+    "password-based-auth-react",
+    "password-based-auth-tanstack",
+    "social-auth-nextjs",
+    "social-auth-react",
+    "social-auth-tanstack",
+    "realtime-chat-nextjs",
+    "realtime-chat-react",
+    "realtime-chat-tanstack",
+    "realtime-cursor-nextjs",
+    "realtime-cursor-react",
+    "realtime-cursor-tanstack",
+    "realtime-avatar-stack-nextjs",
+    "realtime-avatar-stack-react",
+    "realtime-avatar-stack-tanstack",
+    "dropzone-nextjs",
+    "dropzone-react",
+    "dropzone-tanstack",
+    "current-user-avatar-nextjs",
+    "current-user-avatar-react",
+    "current-user-avatar-tanstack",
+    "convex-client-nextjs",
+    "convex-client-react",
+    "convex-client-tanstack"
+  ]
+}
